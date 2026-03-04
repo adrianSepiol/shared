@@ -61,6 +61,25 @@ export function PanelQueriesSharedControls({
       }) ?? []
   );
 
+  const handleOnQueriesChange = useCallback(
+    (queries: QueryDefinition[]) => {
+      onQueriesChange(queries);
+
+      // If the number of queries has changed, force preview definition update to remove results of deleted queries.
+      if (queries.length !== previewDefinition.length) {
+        setPreviewDefinition(
+          queries.map((query) => {
+            return {
+              kind: query.spec.plugin.kind,
+              spec: query.spec.plugin.spec,
+            };
+          })
+        );
+      }
+    },
+    [onQueriesChange, previewDefinition.length]
+  );
+
   const handleRunQuery = useCallback((index: number, newDef: QueryDefinition) => {
     setPreviewDefinition((prev) => {
       const newDefinitions = [...prev];
@@ -88,7 +107,7 @@ export function PanelQueriesSharedControls({
             control={control}
             panelDefinition={panelDefinition}
             onJSONChange={onJSONChange}
-            onQueriesChange={onQueriesChange}
+            onQueriesChange={handleOnQueriesChange}
             onQueryRun={handleRunQuery}
             onPluginSpecChange={onPluginSpecChange}
           />
