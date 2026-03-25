@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { FilterFn, getFilteredRowModel, TableOptions } from '@tanstack/react-table';
+import { FilterFn, getFilteredRowModel, OnChangeFn, TableOptions } from '@tanstack/react-table';
 import { rankItem } from '@tanstack/match-sorter-utils';
 import { useState } from 'react';
 
@@ -23,7 +23,7 @@ const fuzzyFilter: FilterFn<unknown> = (row, columnId, value, addMeta) => {
 
 export interface UseFuzzySearchResult<TableData> {
   globalFilter: string;
-  setGlobalFilter: (value: string) => void;
+  setGlobalFilter: OnChangeFn<string>;
   fuzzySearchOptions: Pick<
     TableOptions<TableData>,
     'filterFns' | 'globalFilterFn' | 'getFilteredRowModel' | 'filterFromLeafRows' | 'onGlobalFilterChange'
