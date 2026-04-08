@@ -11,9 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Button, Checkbox, ListItemText, Menu, MenuItem, Stack } from '@mui/material';
+import { Checkbox, IconButton, InputAdornment, ListItemText, Menu, MenuItem, Stack } from '@mui/material';
 import { Column } from '@tanstack/react-table';
 import { ReactElement, useState } from 'react';
+import Magnify from 'mdi-material-ui/Magnify';
+import Close from 'mdi-material-ui/Close';
+import ViewColumn from 'mdi-material-ui/ViewColumn';
 import { TextField } from '../controls';
 
 export interface TableToolbarProps<TableData> {
@@ -41,6 +44,10 @@ export interface TableToolbarProps<TableData> {
    * All columns from the table instance, used to build the visibility menu.
    */
   columns: Array<Column<TableData>>;
+  /**
+   * The width of the toolbar, used to determine when to switch to a more compact layout.
+   */
+  width: number | string;
 }
 
 export function TableToolbar<TableData>({
@@ -49,6 +56,7 @@ export function TableToolbar<TableData>({
   onGlobalFilterChange,
   showColumnFilter,
   columns,
+  width,
 }: TableToolbarProps<TableData>): ReactElement | null {
   const [colMenuAnchor, setColMenuAnchor] = useState<null | HTMLElement>(null);
   const colMenuOpen = Boolean(colMenuAnchor);
@@ -63,29 +71,46 @@ export function TableToolbar<TableData>({
       gap={1}
       alignItems="center"
       justifyContent="flex-end"
-      width="100%"
-      paddingY="0.5rem"
+      width={width}
+      padding="0.5rem"
       sx={{ backgroundColor: (theme) => theme.palette.background.default }}
     >
       {showSearch && (
         <TextField
-          size="small"
           placeholder="Search…"
           value={globalFilter}
           onChange={onGlobalFilterChange}
-          slotProps={{ htmlInput: { 'aria-label': 'search table' } }}
+          variant="standard"
+          slotProps={{
+            htmlInput: { 'aria-label': 'search table' },
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Magnify fontSize="small" />
+                </InputAdornment>
+              ),
+              endAdornment: globalFilter !== '' && (
+                <InputAdornment position="end">
+                  <IconButton onClick={() => onGlobalFilterChange('')}>
+                    <Close fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            },
+          }}
+          sx={{ flexGrow: 1 }}
         />
       )}
       {showColumnFilter && (
         <>
-          <Button
-            variant="outlined"
+          <IconButton
             onClick={(e) => setColMenuAnchor(e.currentTarget)}
             aria-haspopup="listbox"
             aria-expanded={colMenuOpen}
+            color="info"
           >
-            Columns
-          </Button>
+            <ViewColumn />
+          </IconButton>
           <Menu
             anchorEl={colMenuAnchor}
             open={colMenuOpen}

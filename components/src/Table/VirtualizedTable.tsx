@@ -176,6 +176,7 @@ export function VirtualizedTable<TableData>({
         onGlobalFilterChange={onGlobalFilterChange}
         showColumnFilter={showColumnFilter}
         columns={allColumns}
+        width={width}
       />
       <Box style={{ width, height }}>
         <TableVirtuoso
