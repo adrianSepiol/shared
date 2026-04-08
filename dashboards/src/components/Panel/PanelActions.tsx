@@ -27,7 +27,7 @@ import AlertIcon from 'mdi-material-ui/Alert';
 import AlertCircleIcon from 'mdi-material-ui/AlertCircle';
 import InformationOutlineIcon from 'mdi-material-ui/InformationOutline';
 import LightningBoltIcon from 'mdi-material-ui/LightningBolt';
-import { Link, Notice } from '@perses-dev/core';
+import { Link, Notice } from '@perses-dev/spec';
 import {
   ARIA_LABEL_TEXT,
   HEADER_ACTIONS_CONTAINER_NAME,
@@ -35,8 +35,8 @@ import {
   HEADER_SMALL_WIDTH,
   TOOLTIP_TEXT,
 } from '../../constants';
+import { LinksDisplay } from '../LinksDisplay';
 import { HeaderIconButton } from './HeaderIconButton';
-import { PanelLinks } from './PanelLinks';
 import { PanelOptions } from './Panel';
 
 const noticeTypeToIcon: Record<Notice['type'], ReactNode> = {
@@ -109,7 +109,7 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
     return undefined;
   }, [descriptionTooltipId, description]);
 
-  const linksAction = links && links.length > 0 && <PanelLinks links={links} />;
+  const linksAction = links && links.length > 0 && <LinksDisplay links={links} variant="panel" />;
   const extraActions = editHandlers === undefined && extra;
 
   const queryStateIndicator = useMemo((): ReactNode | undefined => {

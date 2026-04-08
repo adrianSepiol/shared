@@ -11,14 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {
-  createPanelRef,
-  DashboardResource,
-  EphemeralDashboardResource,
-  GridDefinition,
-  PanelGroupDefinition,
-  PanelGroupId,
-} from '@perses-dev/core';
+import { DashboardResource, EphemeralDashboardResource, PanelGroupDefinition } from '@perses-dev/core'; // TODO
+import { createPanelRef, GridDefinition, PanelGroupId } from '@perses-dev/spec';
 import { useDashboardStore } from './DashboardProvider';
 import { useVariableDefinitionActions, useVariableDefinitions } from './VariableProvider';
 
@@ -37,6 +31,7 @@ export function useDashboard(): {
     duration,
     refreshInterval,
     datasources,
+    links,
     ttl,
   } = useDashboardStore(
     ({
@@ -50,6 +45,7 @@ export function useDashboard(): {
       duration,
       refreshInterval,
       datasources,
+      links,
       ttl,
     }) => ({
       panels,
@@ -62,6 +58,7 @@ export function useDashboard(): {
       duration,
       refreshInterval,
       datasources,
+      links,
       ttl,
     })
   );
@@ -82,6 +79,7 @@ export function useDashboard(): {
             duration,
             refreshInterval,
             datasources,
+            links,
           },
         } as DashboardResource)
       : ({
@@ -95,6 +93,7 @@ export function useDashboard(): {
             duration,
             refreshInterval,
             datasources,
+            links,
             ttl,
           },
         } as EphemeralDashboardResource);
