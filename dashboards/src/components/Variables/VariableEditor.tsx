@@ -11,27 +11,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { useState, useMemo, ReactElement } from 'react';
+import { ReactElement, useMemo, useState } from 'react';
 import {
-  Button,
-  Stack,
-  Box,
-  TableContainer,
-  TableBody,
-  TableRow,
-  TableCell as MuiTableCell,
-  Table,
-  TableHead,
-  Switch,
-  Typography,
-  IconButton,
-  Alert,
-  styled,
-  capitalize,
-  Tooltip,
   Accordion,
-  AccordionSummary,
   AccordionDetails,
+  AccordionSummary,
+  Alert,
+  Box,
+  Button,
+  capitalize,
+  IconButton,
+  Stack,
+  styled,
+  Switch,
+  Table,
+  TableBody,
+  TableCell as MuiTableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tooltip,
+  Typography,
 } from '@mui/material';
 import AddIcon from 'mdi-material-ui/Plus';
 import { Action, ExternalVariableDefinition } from '@perses-dev/core'; // TODO
@@ -46,9 +46,9 @@ import ContentDuplicate from 'mdi-material-ui/ContentDuplicate';
 import OpenInNewIcon from 'mdi-material-ui/OpenInNew';
 import ExpandMoreIcon from 'mdi-material-ui/ChevronUp';
 
-import { ValidationProvider, VariableEditorForm, VariableState, VARIABLE_TYPES } from '@perses-dev/plugin-system';
+import { ValidationProvider, VARIABLE_TYPES, VariableEditorForm, VariableState } from '@perses-dev/plugin-system';
 import { InfoTooltip } from '@perses-dev/components';
-import { useDiscardChangesConfirmationDialog } from '../../context';
+import { useDiscardChangesConfirmationDialog, VariableProviderWithQueryParams } from '../../context';
 import { hydrateVariableDefinitionStates } from '../../context/VariableProvider/hydrationUtils';
 import { BuiltinVariableAccordions } from './BuiltinVariableAccordions';
 
@@ -183,24 +183,26 @@ export function VariableEditor(props: {
     <>
       {currentEditingVariableDefinition && (
         <ValidationProvider>
-          <VariableEditorForm
-            initialVariableDefinition={currentEditingVariableDefinition}
-            action={variableFormAction}
-            isDraft={true}
-            onActionChange={setVariableFormAction}
-            onSave={(definition: VariableDefinition) => {
-              setVariableDefinitions((draft) => {
-                draft[variableEditIdx] = definition;
+          <VariableProviderWithQueryParams initialVariableDefinitions={variableDefinitions}>
+            <VariableEditorForm
+              initialVariableDefinition={currentEditingVariableDefinition}
+              action={variableFormAction}
+              isDraft={true}
+              onActionChange={setVariableFormAction}
+              onSave={(definition: VariableDefinition) => {
+                setVariableDefinitions((draft) => {
+                  draft[variableEditIdx] = definition;
+                  setVariableEditIdx(null);
+                });
+              }}
+              onClose={() => {
+                if (variableFormAction === 'create') {
+                  removeVariable(variableEditIdx);
+                }
                 setVariableEditIdx(null);
-              });
-            }}
-            onClose={() => {
-              if (variableFormAction === 'create') {
-                removeVariable(variableEditIdx);
-              }
-              setVariableEditIdx(null);
-            }}
-          />
+              }}
+            />
+          </VariableProviderWithQueryParams>
         </ValidationProvider>
       )}
       {!currentEditingVariableDefinition && (
