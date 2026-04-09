@@ -48,7 +48,7 @@ import ExpandMoreIcon from 'mdi-material-ui/ChevronUp';
 
 import { ValidationProvider, VARIABLE_TYPES, VariableEditorForm, VariableState } from '@perses-dev/plugin-system';
 import { InfoTooltip } from '@perses-dev/components';
-import { useDiscardChangesConfirmationDialog, VariableProviderWithQueryParams } from '../../context';
+import { useDiscardChangesConfirmationDialog, VariableProvider } from '../../context';
 import { hydrateVariableDefinitionStates } from '../../context/VariableProvider/hydrationUtils';
 import { BuiltinVariableAccordions } from './BuiltinVariableAccordions';
 
@@ -202,7 +202,7 @@ export function VariableEditor(props: {
                 setVariableEditIdx(null);
               }}
             />
-          </VariableProviderWithQueryParams>
+          </VariableProvider>
         </ValidationProvider>
       )}
       {!currentEditingVariableDefinition && (
