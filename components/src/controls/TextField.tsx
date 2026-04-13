@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { TextField as MuiTextField, TextFieldProps as MuiTextFieldProps } from '@mui/material';
+import { TextFieldProps as MuiTextFieldProps, TextField as MuiTextField } from '@mui/material';
 import { ChangeEvent, ForwardedRef, forwardRef, useCallback, useMemo, useState } from 'react';
 import debounce from 'lodash/debounce';
 
