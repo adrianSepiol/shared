@@ -123,6 +123,7 @@ export function TableToolbar<TableData>({
             open={colMenuOpen}
             onClose={() => setColMenuAnchor(null)}
             slotProps={{ list: { dense: true } }}
+            sx={{ maxHeight: 400 }}
           >
             {columns.map((column) => {
               const header = column.columnDef.header;
