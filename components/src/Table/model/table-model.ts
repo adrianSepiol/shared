@@ -301,6 +301,7 @@ declare module '@tanstack/table-core' {
 }
 
 declare module '@tanstack/react-table' {
+  //add fuzzy filter to the filterFns. Allows us to use "fuzzy" as a value for `globalFilterFn` in our table options.
   interface FilterFns {
     fuzzy: FilterFn<unknown>;
   }
