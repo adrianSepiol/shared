@@ -92,6 +92,7 @@ export function convertLayoutsToPanelGroups(
   for (const layout of layouts) {
     const itemLayouts: PanelGroupDefinition['itemLayouts'] = [];
     const itemPanelKeys: PanelGroupDefinition['itemPanelKeys'] = {};
+    const itemRepeatVariables: PanelGroupDefinition['itemRepeatVariables'] = {};
 
     // Split layout information from panel keys to make it easier to update just layouts on move/resize of panels
     for (const item of layout.spec.items) {
@@ -104,6 +105,7 @@ export function convertLayoutsToPanelGroups(
         y: item.y,
       });
       itemPanelKeys[panelGroupLayoutId] = getPanelKeyFromRef(item.content);
+      itemRepeatVariables[panelGroupLayoutId] = item.repeatVariable;
     }
 
     // Create the panel group and keep track of the ID order
@@ -115,6 +117,7 @@ export function convertLayoutsToPanelGroups(
       title: layout.spec.display?.title,
       itemLayouts,
       itemPanelKeys,
+      itemRepeatVariables,
     };
     panelGroupIdOrder.push(panelGroupId);
   }
@@ -134,6 +137,7 @@ export function createEmptyPanelGroup(): PanelGroupDefinition {
     isCollapsed: false,
     itemLayouts: [],
     itemPanelKeys: {},
+    itemRepeatVariables: {},
   };
 }
 

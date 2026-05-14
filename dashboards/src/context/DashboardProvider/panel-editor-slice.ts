@@ -108,10 +108,17 @@ export function createPanelEditorSlice(): StateCreator<
         initialValues: {
           groupId: panelGroupItemId.panelGroupId,
           panelDefinition: panelToEdit,
+          repeatVariable: panelGroups[panelGroupId]?.itemRepeatVariables[panelGroupLayoutId],
         },
         applyChanges: (next) => {
           set((state) => {
             state.panels[panelKey] = next.panelDefinition;
+
+            // Always update the repeat variable on the current group item
+            const currentGroup = state.panelGroups[panelGroupId];
+            if (currentGroup !== undefined) {
+              currentGroup.itemRepeatVariables[panelGroupLayoutId] = next.repeatVariable;
+            }
 
             // If the panel didn't change groups, nothing else to do
             if (next.groupId === panelGroupId) {
@@ -134,6 +141,7 @@ export function createPanelEditorSlice(): StateCreator<
             // Remove item from the old group
             existingGroup.itemLayouts.splice(existingLayoutIdx, 1);
             delete existingGroup.itemPanelKeys[panelGroupLayoutId];
+            delete existingGroup.itemRepeatVariables[panelGroupLayoutId];
 
             // Add item to the end of the new group
             const newGroup = state.panelGroups[next.groupId];
@@ -149,6 +157,7 @@ export function createPanelEditorSlice(): StateCreator<
               h: existingLayout.h,
             });
             newGroup.itemPanelKeys[existingLayout.i] = existingPanelKey;
+            newGroup.itemRepeatVariables[existingLayout.i] = next.repeatVariable;
           });
         },
         close: () => {
@@ -200,6 +209,7 @@ export function createPanelEditorSlice(): StateCreator<
             };
             group.itemLayouts.push(layout);
             group.itemPanelKeys[layout.i] = panelKey;
+            group.itemRepeatVariables[layout.i] = next.repeatVariable;
           });
         },
         close: () => {

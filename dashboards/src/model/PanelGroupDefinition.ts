@@ -69,6 +69,7 @@ export interface PanelGroupDefinition {
   repeatVariable?: string; // Optional, used for repeated panel groups
   itemLayouts: PanelGroupItemLayout[];
   itemPanelKeys: Record<PanelGroupItemLayoutId, string>;
+  itemRepeatVariables: Record<PanelGroupItemLayoutId, string | undefined>; // Optional repeat variable per panel item
 }
 
 /**

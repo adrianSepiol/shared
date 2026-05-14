@@ -82,6 +82,7 @@ export function createDuplicatePanelSlice(): StateCreator<
         group.itemLayouts = insertPanelInLayout(duplicateLayout, matchingLayout, group.itemLayouts);
 
         group.itemPanelKeys[duplicateLayout.i] = dupePanelKey;
+        group.itemRepeatVariables[duplicateLayout.i] = group.itemRepeatVariables[panelGroupLayoutId];
       });
     },
   });

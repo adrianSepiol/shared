@@ -25,7 +25,7 @@ import {
 import { PluginKindSelect, usePluginEditor, useValidationSchemas } from '@perses-dev/plugin-system';
 import { Controller, FormProvider, SubmitHandler, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useListPanelGroups } from '../../context';
+import { useListPanelGroups, useVariableDefinitions } from '../../context';
 import { PanelEditorProvider } from '../../context/PanelEditorProvider/PanelEditorProvider';
 import { usePanelEditor } from './usePanelEditor';
 import { PanelQueriesSharedControls } from './PanelQueriesSharedControls';
@@ -41,6 +41,8 @@ export interface PanelEditorFormProps {
 export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
   const { initialValues, initialAction, panelKey, onSave, onClose } = props;
   const panelGroups = useListPanelGroups();
+  const variableDefinitions = useVariableDefinitions();
+  const variableNames = variableDefinitions.map((v) => v.spec.name).sort((a, b) => a.localeCompare(b));
   const { panelDefinition, setName, setDescription, setLinks, setQueries, setPlugin, setPanelDefinition } =
     usePanelEditor(initialValues.panelDefinition);
   const { plugin } = panelDefinition.spec;
@@ -199,6 +201,31 @@ export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
                     {panelGroups.map((panelGroup, index) => (
                       <MenuItem key={panelGroup.id} value={panelGroup.id}>
                         {panelGroup.title ?? `Group ${index + 1}`}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                )}
+              />
+            </Grid>
+            <Grid item xs={4}>
+              <Controller
+                control={form.control}
+                name="repeatVariable"
+                render={({ field }) => (
+                  <TextField
+                    select
+                    {...field}
+                    fullWidth
+                    label="Repeat Variable"
+                    value={field.value ?? ''}
+                    onChange={(e) => field.onChange(e.target.value === '' ? undefined : e.target.value)}
+                  >
+                    <MenuItem value="">
+                      <Typography sx={{ fontStyle: 'italic' }}>None</Typography>
+                    </MenuItem>
+                    {variableNames.map((name) => (
+                      <MenuItem key={name} value={name}>
+                        {name}
                       </MenuItem>
                     ))}
                   </TextField>

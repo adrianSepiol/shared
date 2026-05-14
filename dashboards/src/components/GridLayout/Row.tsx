@@ -17,6 +17,7 @@ import { PanelOptions, useViewPanelGroup } from '@perses-dev/dashboards';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { Layout, Layouts, Responsive, WidthProvider } from 'react-grid-layout';
 import { ErrorAlert, ErrorBoundary } from '@perses-dev/components';
+import { useVariableValues, VariableContext } from '@perses-dev/plugin-system';
 import { GRID_LAYOUT_COLS, GRID_LAYOUT_SMALL_BREAKPOINT } from '../../constants';
 import { PanelGroupDefinition, PanelGroupItemLayout } from '../../model';
 import { GridContainer } from './GridContainer';
@@ -141,10 +142,13 @@ export function Row({
               }}
             >
               <ErrorBoundary FallbackComponent={ErrorAlert}>
-                <GridItemContent
-                  panelOptions={panelOptions}
-                  panelGroupItemId={{ panelGroupId, panelGroupItemLayoutId: i, repeatVariable }}
+                <RepeatPanelItem
+                  panelGroupId={panelGroupId}
+                  panelGroupItemLayoutId={i}
+                  repeatVariableName={groupDefinition.itemRepeatVariables[i]}
                   width={calculateGridItemWidth(w, gridColWidth)}
+                  panelOptions={panelOptions}
+                  repeatVariable={repeatVariable}
                 />
               </ErrorBoundary>
             </div>
@@ -160,3 +164,57 @@ const calculateGridItemWidth = (w: number, colWidth: number): number => {
   if (!Number.isFinite(w)) return w;
   return Math.round(colWidth * w + Math.max(0, w - 1) * DEFAULT_MARGIN);
 };
+
+interface RepeatPanelItemProps {
+  panelGroupId: PanelGroupId;
+  panelGroupItemLayoutId: string;
+  repeatVariableName: string | undefined;
+  width: number;
+  panelOptions?: PanelOptions;
+  repeatVariable?: [string, string]; // group-level repeat variable context, if any
+}
+
+/**
+ * Renders a panel item, repeating it horizontally for each value of the repeat variable when configured.
+ */
+function RepeatPanelItem({
+  panelGroupId,
+  panelGroupItemLayoutId,
+  repeatVariableName,
+  width,
+  panelOptions,
+  repeatVariable,
+}: RepeatPanelItemProps): ReactElement {
+  const variables = useVariableValues();
+  const variable = repeatVariableName !== undefined ? variables[repeatVariableName] : undefined;
+
+  if (repeatVariableName !== undefined && variable !== undefined && Array.isArray(variable.value) && variable.value.length > 0) {
+    const perPanelWidth = Math.floor(width / variable.value.length);
+    return (
+      <div style={{ display: 'flex', width: '100%', height: '100%', gap: DEFAULT_MARGIN }}>
+        {variable.value.map((value) => (
+          <VariableContext.Provider
+            key={`${repeatVariableName}-${value}`}
+            value={{ state: { ...variables, [repeatVariableName]: { value, loading: false } } }}
+          >
+            <div style={{ flex: 1, minWidth: 0, height: '100%' }}>
+              <GridItemContent
+                panelOptions={panelOptions}
+                panelGroupItemId={{ panelGroupId, panelGroupItemLayoutId, repeatVariable }}
+                width={perPanelWidth}
+              />
+            </div>
+          </VariableContext.Provider>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <GridItemContent
+      panelOptions={panelOptions}
+      panelGroupItemId={{ panelGroupId, panelGroupItemLayoutId, repeatVariable }}
+      width={width}
+    />
+  );
+}
