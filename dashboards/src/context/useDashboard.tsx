@@ -121,7 +121,7 @@ function convertPanelGroupsToLayouts(
     if (group === undefined) {
       throw new Error('panel group not found');
     }
-    const { title, isCollapsed, repeatVariable, itemLayouts, itemPanelKeys, itemRepeatVariables } = group;
+    const { title, isCollapsed, repeatVariable, itemLayouts, itemPanelKeys } = group;
     let display = undefined;
     if (title || isCollapsed !== undefined) {
       display = {
@@ -146,7 +146,7 @@ function convertPanelGroupsToLayouts(
             width: layout.w,
             height: layout.h,
             content: createPanelRef(panelKey),
-            repeatVariable: itemRepeatVariables[layout.i],
+            repeatVariable: layout.repeatVariable,
           };
         }),
         repeatVariable: repeatVariable,

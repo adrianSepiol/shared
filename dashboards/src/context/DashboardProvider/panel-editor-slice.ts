@@ -108,7 +108,6 @@ export function createPanelEditorSlice(): StateCreator<
         initialValues: {
           groupId: panelGroupItemId.panelGroupId,
           panelDefinition: panelToEdit,
-          repeatVariable: panelGroups[panelGroupId]?.itemRepeatVariables[panelGroupLayoutId],
         },
         applyChanges: (next) => {
           set((state) => {
@@ -116,9 +115,11 @@ export function createPanelEditorSlice(): StateCreator<
 
             // Always update the repeat variable on the current group item
             const currentGroup = state.panelGroups[panelGroupId];
-            if (currentGroup !== undefined) {
-              currentGroup.itemRepeatVariables[panelGroupLayoutId] = next.repeatVariable;
+            const layout = currentGroup?.itemLayouts.findIndex((layout) => layout.i === panelGroupLayoutId);
+            if (layout === undefined || layout === -1) {
+              throw new Error(`Could not find layout for panel group item ${panelGroupItemId}`);
             }
+            currentGroup.itemLayouts[layout].repeatVariable = next.panelDefinition.spec.display?.repeatVariable;
 
             // If the panel didn't change groups, nothing else to do
             if (next.groupId === panelGroupId) {
@@ -141,7 +142,6 @@ export function createPanelEditorSlice(): StateCreator<
             // Remove item from the old group
             existingGroup.itemLayouts.splice(existingLayoutIdx, 1);
             delete existingGroup.itemPanelKeys[panelGroupLayoutId];
-            delete existingGroup.itemRepeatVariables[panelGroupLayoutId];
 
             // Add item to the end of the new group
             const newGroup = state.panelGroups[next.groupId];
@@ -155,9 +155,9 @@ export function createPanelEditorSlice(): StateCreator<
               y: getYForNewRow(newGroup),
               w: existingLayout.w,
               h: existingLayout.h,
+              repeatVariable: existingLayout.repeatVariable,
             });
             newGroup.itemPanelKeys[existingLayout.i] = existingPanelKey;
-            newGroup.itemRepeatVariables[existingLayout.i] = next.repeatVariable;
           });
         },
         close: () => {
@@ -209,7 +209,6 @@ export function createPanelEditorSlice(): StateCreator<
             };
             group.itemLayouts.push(layout);
             group.itemPanelKeys[layout.i] = panelKey;
-            group.itemRepeatVariables[layout.i] = next.repeatVariable;
           });
         },
         close: () => {

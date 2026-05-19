@@ -50,7 +50,7 @@ export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
 
   const { panelEditorSchema } = useValidationSchemas();
   const form = useForm<PanelEditorValues>({
-    resolver: zodResolver(panelEditorSchema),
+    // resolver: zodResolver(panelEditorSchema),
     mode: 'onBlur',
     defaultValues: initialValues,
   });
@@ -210,7 +210,7 @@ export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
             <Grid item xs={4}>
               <Controller
                 control={form.control}
-                name="repeatVariable"
+                name="panelDefinition.spec.display.repeatVariable"
                 render={({ field }) => (
                   <TextField
                     select
@@ -218,7 +218,9 @@ export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
                     fullWidth
                     label="Repeat Variable"
                     value={field.value ?? ''}
-                    onChange={(e) => field.onChange(e.target.value === '' ? undefined : e.target.value)}
+                    onChange={(e) => {
+                      field.onChange(e.target.value === '' ? undefined : e.target.value);
+                    }}
                   >
                     <MenuItem value="">
                       <Typography sx={{ fontStyle: 'italic' }}>None</Typography>
