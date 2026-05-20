@@ -82,60 +82,64 @@ export function Row({
   }, [hasViewPanel]);
 
   // Item layout is override if there is a panel in view mode
-  const itemLayouts: Map<string, PanelGroupItemLayout & { variable?: [string, string]; originalI?: string }> =
-    useMemo(() => {
-      const result: Map<string, PanelGroupItemLayout & { variable?: [string, string]; originalI?: string }> = new Map();
-      if (itemLayoutViewed) {
-        groupDefinition.itemLayouts.map((itemLayout) => {
-          if (itemLayout.i === itemLayoutViewed) {
-            const rowTitleHeight = 40 + 8; // 40 is the height of the row title and 8 is the margin height
-            result.set(itemLayout.i, {
-              h: Math.round(((panelFullHeight ?? window.innerHeight) - rowTitleHeight) / (ROW_HEIGHT + DEFAULT_MARGIN)), // Viewed panel should take the full height remaining
-              i: itemLayoutViewed,
-              w: 48,
-              x: 0,
-              y: 0,
-              originalI: itemLayoutViewed,
-            });
-            return result;
-          }
-          result.set(itemLayout.i, itemLayout);
-        });
-        // todo cleanup this function
-        return result;
-      }
-      //todo do it once at the store initialization (and listen on variable change) instead of doing it on every render
-      groupDefinition.itemLayouts.forEach((itemLayout) => {
-        const repeatVariable = itemLayout.repeatVariable;
-        const variable = repeatVariable !== undefined ? variables[repeatVariable] : undefined;
-        // todo change to available options instead of using selected values
-        if (variable && Array.isArray(variable.value) && variable.value.length > 0) {
-          let currentX = itemLayout.x;
-          let currentY = itemLayout.y;
-          variable.value.forEach((value, index) => {
-            result.set(`${itemLayout.i}-${value}`, {
-              ...itemLayout,
-              i: index === 0 ? itemLayout.i : `${itemLayout.i}-${value}`,
-              isDraggable: isEditMode && index === 0,
-              isResizable: isEditMode && index === 0,
-              static: index !== 0,
-              allowOverlap: false,
-              x: currentX,
-              y: currentY,
-              originalI: itemLayout.i,
-              //todo fix asertion
-              variable: [repeatVariable!, value],
-            });
-            const leftCols = cols - currentX - itemLayout.w;
-            currentX = leftCols >= itemLayout.w ? currentX + itemLayout.w : 0;
-            currentY = leftCols >= itemLayout.w ? currentY : currentY + itemLayout.h;
+  const { itemLayouts, generatedIds } = useMemo(() => {
+    const result: Map<string, PanelGroupItemLayout & { variable?: [string, string]; originalI?: string }> = new Map();
+    const generated = new Set<string>();
+    if (itemLayoutViewed) {
+      groupDefinition.itemLayouts.map((itemLayout) => {
+        if (itemLayout.i === itemLayoutViewed) {
+          const rowTitleHeight = 40 + 8; // 40 is the height of the row title and 8 is the margin height
+          result.set(itemLayout.i, {
+            h: Math.round(((panelFullHeight ?? window.innerHeight) - rowTitleHeight) / (ROW_HEIGHT + DEFAULT_MARGIN)), // Viewed panel should take the full height remaining
+            i: itemLayoutViewed,
+            w: 48,
+            x: 0,
+            y: 0,
+            originalI: itemLayoutViewed,
           });
-        } else {
-          result.set(itemLayout.i, itemLayout);
+          return result;
         }
+        result.set(itemLayout.i, itemLayout);
       });
-      return result;
-    }, [cols, groupDefinition.itemLayouts, isEditMode, itemLayoutViewed, panelFullHeight, variables]);
+      // todo cleanup this function
+      return { itemLayouts: result, generatedIds: generated };
+    }
+    //todo do it once at the store initialization (and listen on variable change) instead of doing it on every render
+    groupDefinition.itemLayouts.forEach((itemLayout) => {
+      const repeatVariable = itemLayout.repeatVariable;
+      const variable = repeatVariable !== undefined ? variables[repeatVariable] : undefined;
+      // todo change to available options instead of using selected values
+      if (variable && Array.isArray(variable.value) && variable.value.length > 0) {
+        let currentX = itemLayout.x;
+        let currentY = itemLayout.y;
+        variable.value.forEach((value, index) => {
+          const generatedId = `${itemLayout.i}-${value}`;
+          if (index !== 0) {
+            generated.add(generatedId);
+          }
+          result.set(index === 0 ? itemLayout.i : generatedId, {
+            ...itemLayout,
+            i: index === 0 ? itemLayout.i : generatedId,
+            isDraggable: isEditMode && index === 0,
+            isResizable: isEditMode && index === 0,
+            static: index !== 0,
+            allowOverlap: false,
+            x: currentX,
+            y: currentY,
+            originalI: itemLayout.i,
+            //todo fix asertion
+            variable: [repeatVariable!, value],
+          });
+          const leftCols = cols - currentX - itemLayout.w;
+          currentX = leftCols >= itemLayout.w ? currentX + itemLayout.w : 0;
+          currentY = leftCols >= itemLayout.w ? currentY : currentY + itemLayout.h;
+        });
+      } else {
+        result.set(itemLayout.i, itemLayout);
+      }
+    });
+    return { itemLayouts: result, generatedIds: generated };
+  }, [cols, groupDefinition.itemLayouts, isEditMode, itemLayoutViewed, panelFullHeight, variables]);
 
   return (
     <GridContainer
@@ -172,40 +176,24 @@ export function Row({
             sm: [...itemLayouts.values()].flat(),
           }}
           onLayoutChange={(currentLayout, allLayouts) => {
-            const ids = new Set<string>();
             const uniqueCurrentLayots = currentLayout
+              .filter(({ i }) => !generatedIds.has(i))
               .map((layout) => ({
                 ...itemLayouts.get(layout.i),
                 ...layout,
                 i: itemLayouts.get(layout.i)?.originalI ?? layout.i,
-              }))
-              .filter(({ i }) => {
-                if (ids.has(i)) {
-                  return false;
-                }
-                ids.add(i);
-                return true;
-              });
+              }));
             const uniqueAllLayouts = Object.fromEntries(
-              Object.entries(allLayouts).map(([breakpoint, layouts]) => {
-                const allIds = new Set<string>();
-                return [
-                  breakpoint,
-                  layouts
-                    .map((layout) => ({
-                      ...itemLayouts.get(layout.i),
-                      ...layout,
-                      i: itemLayouts.get(layout.i)?.originalI ?? layout.i,
-                    }))
-                    .filter(({ i }) => {
-                      if (allIds.has(i)) {
-                        return false;
-                      }
-                      allIds.add(i);
-                      return true;
-                    }),
-                ];
-              })
+              Object.entries(allLayouts).map(([breakpoint, layouts]) => [
+                breakpoint,
+                layouts
+                  .filter(({ i }) => !generatedIds.has(i))
+                  .map((layout) => ({
+                    ...itemLayouts.get(layout.i),
+                    ...layout,
+                    i: itemLayouts.get(layout.i)?.originalI ?? layout.i,
+                  })),
+              ])
             );
             onLayoutChange?.(uniqueCurrentLayots, uniqueAllLayouts);
           }}
