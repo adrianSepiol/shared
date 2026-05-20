@@ -68,6 +68,8 @@ export function Row({
     viewPanelItemId.repeatVariable?.[0] === repeatVariable?.[0] &&
     viewPanelItemId.repeatVariable?.[1] === repeatVariable?.[1];
   const itemLayoutViewed = viewPanelItemId?.panelGroupItemLayoutId;
+  // todo init with sm cols but first check after variable value is persisted
+  const [cols, setCols] = useState<number>(0);
 
   // If there is a panel in view mode, we should hide the grid if the panel is not in the current group.
   const isGridDisplayed = !viewPanelItemId || hasViewPanel;
@@ -102,29 +104,38 @@ export function Row({
         // todo cleanup this function
         return result;
       }
+      //todo do it once at the store initialization (and listen on variable change) instead of doing it on every render
       groupDefinition.itemLayouts.forEach((itemLayout) => {
         const repeatVariable = itemLayout.repeatVariable;
         const variable = repeatVariable !== undefined ? variables[repeatVariable] : undefined;
         // todo change to available options instead of using selected values
         if (variable && Array.isArray(variable.value) && variable.value.length > 0) {
-          variable.value.map((value, index) =>
+          let currentX = itemLayout.x;
+          let currentY = itemLayout.y;
+          variable.value.forEach((value, index) => {
             result.set(`${itemLayout.i}-${value}`, {
               ...itemLayout,
-              i: `${itemLayout.i}-${value}`,
-              isDraggable: index === 0,
-              isResizable: index === 0,
-              x: itemLayout.x + index * itemLayout.w,
+              i: index === 0 ? itemLayout.i : `${itemLayout.i}-${value}`,
+              isDraggable: isEditMode && index === 0,
+              isResizable: isEditMode && index === 0,
+              static: index !== 0,
+              allowOverlap: false,
+              x: currentX,
+              y: currentY,
               originalI: itemLayout.i,
               //todo fix asertion
               variable: [repeatVariable!, value],
-            })
-          );
+            });
+            const leftCols = cols - currentX - itemLayout.w;
+            currentX = leftCols >= itemLayout.w ? currentX + itemLayout.w : 0;
+            currentY = leftCols >= itemLayout.w ? currentY : currentY + itemLayout.h;
+          });
         } else {
           result.set(itemLayout.i, itemLayout);
         }
       });
       return result;
-    }, [groupDefinition.itemLayouts, itemLayoutViewed, panelFullHeight, variables]);
+    }, [cols, groupDefinition.itemLayouts, isEditMode, itemLayoutViewed, panelFullHeight, variables]);
 
   return (
     <GridContainer
@@ -157,7 +168,9 @@ export function Row({
           isResizable={isEditMode && !hasViewPanel}
           margin={[DEFAULT_MARGIN, DEFAULT_MARGIN]}
           containerPadding={[0, 10]}
-          layouts={{ sm: [...itemLayouts.values()].flat() }}
+          layouts={{
+            sm: [...itemLayouts.values()].flat(),
+          }}
           onLayoutChange={(currentLayout, allLayouts) => {
             const ids = new Set<string>();
             const uniqueCurrentLayots = currentLayout
@@ -196,7 +209,16 @@ export function Row({
             );
             onLayoutChange?.(uniqueCurrentLayots, uniqueAllLayouts);
           }}
-          onWidthChange={onWidthChange}
+          onWidthChange={(
+            containerWidth: number,
+            margin: [number, number],
+            cols: number,
+            containerPadding: [number, number]
+          ) => {
+            setCols(cols);
+            onWidthChange?.(containerWidth, margin, cols, containerPadding);
+          }}
+          onDragStart={console.log}
           allowOverlap={hasViewPanel} // Enabling overlap when viewing a specific panel because panel in front of the viewed panel will add empty spaces (empty row height)
         >
           {[...itemLayouts.values()].map(({ i, w, variable, originalI }) => (
