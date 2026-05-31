@@ -49,15 +49,15 @@ export function createDuplicatePanelSlice(): StateCreator<
         if (group === undefined) {
           throw new Error(`Missing panel group ${panelGroupId}`);
         }
-        const panelKey = group.itemPanelKeys[panelGroupLayoutId];
-        if (panelKey === undefined) {
+        const config = group.itemConfigs[panelGroupLayoutId];
+        if (config === undefined) {
           throw new Error(`Could not find Panel Group item ${panelGroupItemId}`);
         }
 
         // Find the panel to edit
-        const panelToDupe = panels[panelKey];
+        const panelToDupe = panels[config.panelKey];
         if (panelToDupe === undefined) {
-          throw new Error(`Cannot find Panel with key '${panelKey}'`);
+          throw new Error(`Cannot find Panel with key '${config}'`);
         }
 
         // Find the layout for the item being duped
@@ -66,7 +66,7 @@ export function createDuplicatePanelSlice(): StateCreator<
         });
 
         if (matchingLayout === undefined) {
-          throw new Error(`Cannot find layout for Panel with key '${panelKey}'`);
+          throw new Error(`Cannot find layout for Panel with key '${config}'`);
         }
 
         const dupePanelKey = generatePanelKey();
@@ -80,9 +80,7 @@ export function createDuplicatePanelSlice(): StateCreator<
         };
 
         group.itemLayouts = insertPanelInLayout(duplicateLayout, matchingLayout, group.itemLayouts);
-
-        group.itemPanelKeys[duplicateLayout.i] = dupePanelKey;
-        group.itemRepeatVariables[duplicateLayout.i] = group.itemRepeatVariables[panelGroupLayoutId];
+        group.itemConfigs[duplicateLayout.i] = { panelKey: dupePanelKey, repeatVariable: config.repeatVariable };
       });
     },
   });

@@ -156,6 +156,37 @@ export function useVariableDefinitionStates(variableNames?: string[]): VariableS
 }
 
 /**
+ * Returns all variable definitions (local and external) with an option to include overridden variables.
+ */
+export function useAllVariableDefinitions(includeOverridden = false): VariableDefinition[] {
+  const store = useVariableDefinitionStoreCtx();
+  return useStoreWithEqualityFn(
+    store,
+    (s) => {
+      const result: VariableDefinition[] = [];
+
+      // External variables (reversed so most-prioritized comes first)
+      [...s.externalVariableDefinitions].reverse().forEach((def) => {
+        def.definitions.forEach((v) => {
+          if (includeOverridden || !s.variableState.get({ name: v.spec.name, source: def.source })?.overridden) {
+            result.push(v);
+          }
+        });
+      });
+
+      s.variableDefinitions.forEach((v) => {
+        if (includeOverridden || !s.variableState.get({ name: v.spec.name })?.overridden) {
+          result.push(v);
+        }
+      });
+
+      return result;
+    },
+    shallow
+  );
+}
+
+/**
  * Get the state and definition of a variable from the variables context.
  * @param name name of the variable
  * @param source if given, it searches in the external variables

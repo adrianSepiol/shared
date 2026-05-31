@@ -18,6 +18,7 @@ import { DashboardProvider, DashboardProviderProps } from './DashboardProvider';
 export function DashboardProviderWithQueryParams({ children, initialState }: DashboardProviderProps): ReactElement {
   const [viewPanelRef, setViewPanelRef] = useQueryParam('viewPanelRef', JsonParam);
 
+  console.log(`DashboardProviderWithQueryParams: viewPanelRef=${JSON.stringify(viewPanelRef)}`);
   return (
     <DashboardProvider
       initialState={{

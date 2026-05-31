@@ -22,7 +22,10 @@ import { PanelGroupSlice } from './panel-group-slice';
  */
 export interface VirtualPanelRef {
   ref: string;
-  repeatVariable?: [string, string];
+  repeatVariable?: {
+    group?: [string, string];
+    panel?: [string, string];
+  };
 }
 
 /**
@@ -94,7 +97,9 @@ function findPanelGroupItemIdOfPanelRef(
   panelRef: VirtualPanelRef
 ): PanelGroupItemId | undefined {
   for (const panelGroup of Object.values(panelGroups)) {
-    const itemPanel = Object.entries(panelGroup.itemPanelKeys ?? []).find(([_, value]) => value === panelRef.ref);
+    const itemPanel = Object.entries(panelGroup.itemConfigs ?? []).find(
+      ([_, value]) => value.panelKey === panelRef.ref
+    );
     if (itemPanel) {
       const [key] = itemPanel;
       return {
@@ -117,9 +122,9 @@ function findPanelRefOfPanelGroupItemId(
   }
   const panelGroup = panelGroups[panelGroupItemId.panelGroupId];
   if (panelGroup) {
-    const panelRef = panelGroup.itemPanelKeys[panelGroupItemId.panelGroupItemLayoutId];
-    if (panelRef) {
-      return { ref: panelRef, repeatVariable: panelGroupItemId.repeatVariable };
+    const panelConfig = panelGroup.itemConfigs[panelGroupItemId.panelGroupItemLayoutId];
+    if (panelConfig) {
+      return { ref: panelConfig.panelKey, repeatVariable: panelGroupItemId.repeatVariable };
     }
   }
   return undefined;

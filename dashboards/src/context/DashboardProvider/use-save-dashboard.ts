@@ -59,6 +59,7 @@ export function useSaveDashboard(onSave?: OnSaveDashboard): SaveDashboardResult 
 
     try {
       setSaving(true);
+      console.log(`Saving dashboard with spec: ${JSON.stringify(dashboard)}`);
       await onSave(dashboard);
       closeSaveChangesConfirmationDialog();
       setEditMode(false);

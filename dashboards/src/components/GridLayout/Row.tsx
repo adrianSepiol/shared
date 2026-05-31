@@ -13,16 +13,17 @@
 
 import { Collapse, useTheme } from '@mui/material';
 import { PanelGroupId } from '@perses-dev/spec';
-import { PanelOptions, useViewPanelGroup } from '@perses-dev/dashboards';
+import { PanelGroupItemId, PanelOptions, useLayoutRepeatVariable, useViewPanelGroup } from '@perses-dev/dashboards';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { Layout, Layouts, Responsive, WidthProvider } from 'react-grid-layout';
 import { ErrorAlert, ErrorBoundary } from '@perses-dev/components';
-import { useVariableValues, VariableContext } from '@perses-dev/plugin-system';
+import { useVariableValues } from '@perses-dev/plugin-system';
 import { GRID_LAYOUT_COLS, GRID_LAYOUT_SMALL_BREAKPOINT } from '../../constants';
 import { PanelGroupDefinition, PanelGroupItemLayout } from '../../model';
 import { GridContainer } from './GridContainer';
 import { GridItemContent } from './GridItemContent';
 import { GridTitle } from './GridTitle';
+import { RepeatGridItemContent } from './RepeatGridItemContent';
 
 const DEFAULT_MARGIN = 10;
 const ROW_HEIGHT = 30;
@@ -58,18 +59,16 @@ export function Row({
   const ResponsiveGridLayout = useMemo(() => WidthProvider(Responsive), []);
   const theme = useTheme();
   const viewPanelItemId = useViewPanelGroup();
-  const variables = useVariableValues();
+  const variableValues = useVariableValues();
 
   const [isOpen, setIsOpen] = useState(!groupDefinition.isCollapsed);
 
   const hasViewPanel =
     viewPanelItemId?.panelGroupId === panelGroupId &&
     // Check for repeatVariable panels
-    viewPanelItemId.repeatVariable?.[0] === repeatVariable?.[0] &&
-    viewPanelItemId.repeatVariable?.[1] === repeatVariable?.[1];
+    viewPanelItemId.repeatVariable?.group?.[0] === repeatVariable?.[0] &&
+    viewPanelItemId.repeatVariable?.group?.[1] === repeatVariable?.[1];
   const itemLayoutViewed = viewPanelItemId?.panelGroupItemLayoutId;
-  // todo init with sm cols but first check after variable value is persisted
-  const [cols, setCols] = useState<number>(0);
 
   // If there is a panel in view mode, we should hide the grid if the panel is not in the current group.
   const isGridDisplayed = !viewPanelItemId || hasViewPanel;
@@ -82,64 +81,25 @@ export function Row({
   }, [hasViewPanel]);
 
   // Item layout is override if there is a panel in view mode
-  const { itemLayouts, generatedIds } = useMemo(() => {
-    const result: Map<string, PanelGroupItemLayout & { variable?: [string, string]; originalI?: string }> = new Map();
-    const generated = new Set<string>();
+  const itemLayouts: PanelGroupItemLayout[] = useMemo(() => {
     if (itemLayoutViewed) {
-      groupDefinition.itemLayouts.map((itemLayout) => {
+      return groupDefinition.itemLayouts.map((itemLayout) => {
         if (itemLayout.i === itemLayoutViewed) {
           const rowTitleHeight = 40 + 8; // 40 is the height of the row title and 8 is the margin height
-          result.set(itemLayout.i, {
+          return {
+            ...itemLayout,
             h: Math.round(((panelFullHeight ?? window.innerHeight) - rowTitleHeight) / (ROW_HEIGHT + DEFAULT_MARGIN)), // Viewed panel should take the full height remaining
             i: itemLayoutViewed,
             w: 48,
             x: 0,
             y: 0,
-            originalI: itemLayoutViewed,
-          });
-          return result;
+          } as PanelGroupItemLayout;
         }
-        result.set(itemLayout.i, itemLayout);
+        return itemLayout;
       });
-      // todo cleanup this function
-      return { itemLayouts: result, generatedIds: generated };
     }
-    //todo do it once at the store initialization (and listen on variable change) instead of doing it on every render
-    groupDefinition.itemLayouts.forEach((itemLayout) => {
-      const repeatVariable = itemLayout.repeatVariable;
-      const variable = repeatVariable !== undefined ? variables[repeatVariable] : undefined;
-      // todo change to available options instead of using selected values
-      if (variable && Array.isArray(variable.value) && variable.value.length > 0) {
-        let currentX = itemLayout.x;
-        let currentY = itemLayout.y;
-        variable.value.forEach((value, index) => {
-          const generatedId = `${itemLayout.i}-${value}`;
-          if (index !== 0) {
-            generated.add(generatedId);
-          }
-          result.set(index === 0 ? itemLayout.i : generatedId, {
-            ...itemLayout,
-            i: index === 0 ? itemLayout.i : generatedId,
-            isDraggable: isEditMode && index === 0,
-            isResizable: isEditMode && index === 0,
-            static: index !== 0,
-            allowOverlap: false,
-            x: currentX,
-            y: currentY,
-            originalI: itemLayout.i,
-            //todo fix asertion
-            variable: [repeatVariable!, value],
-          });
-          const leftCols = cols - currentX - itemLayout.w;
-          currentX = leftCols >= itemLayout.w ? currentX + itemLayout.w : 0;
-          currentY = leftCols >= itemLayout.w ? currentY : currentY + itemLayout.h;
-        });
-      } else {
-        result.set(itemLayout.i, itemLayout);
-      }
-    });
-    return { itemLayouts: result, generatedIds: generated };
-  }, [cols, groupDefinition.itemLayouts, isEditMode, itemLayoutViewed, panelFullHeight, variables]);
+    return groupDefinition.itemLayouts;
+  }, [groupDefinition.itemLayouts, itemLayoutViewed, panelFullHeight]);
 
   return (
     <GridContainer
@@ -172,44 +132,12 @@ export function Row({
           isResizable={isEditMode && !hasViewPanel}
           margin={[DEFAULT_MARGIN, DEFAULT_MARGIN]}
           containerPadding={[0, 10]}
-          layouts={{
-            sm: [...itemLayouts.values()].flat(),
-          }}
-          onLayoutChange={(currentLayout, allLayouts) => {
-            const uniqueCurrentLayots = currentLayout
-              .filter(({ i }) => !generatedIds.has(i))
-              .map((layout) => ({
-                ...itemLayouts.get(layout.i),
-                ...layout,
-                i: itemLayouts.get(layout.i)?.originalI ?? layout.i,
-              }));
-            const uniqueAllLayouts = Object.fromEntries(
-              Object.entries(allLayouts).map(([breakpoint, layouts]) => [
-                breakpoint,
-                layouts
-                  .filter(({ i }) => !generatedIds.has(i))
-                  .map((layout) => ({
-                    ...itemLayouts.get(layout.i),
-                    ...layout,
-                    i: itemLayouts.get(layout.i)?.originalI ?? layout.i,
-                  })),
-              ])
-            );
-            onLayoutChange?.(uniqueCurrentLayots, uniqueAllLayouts);
-          }}
-          onWidthChange={(
-            containerWidth: number,
-            margin: [number, number],
-            cols: number,
-            containerPadding: [number, number]
-          ) => {
-            setCols(cols);
-            onWidthChange?.(containerWidth, margin, cols, containerPadding);
-          }}
-          onDragStart={console.log}
+          layouts={{ sm: itemLayouts }}
+          onLayoutChange={onLayoutChange}
+          onWidthChange={onWidthChange}
           allowOverlap={hasViewPanel} // Enabling overlap when viewing a specific panel because panel in front of the viewed panel will add empty spaces (empty row height)
         >
-          {[...itemLayouts.values()].map(({ i, w, variable, originalI }) => (
+          {itemLayouts.map(({ i, w }) => (
             <div
               key={i}
               style={{
@@ -217,30 +145,16 @@ export function Row({
               }}
             >
               <ErrorBoundary FallbackComponent={ErrorAlert}>
-                {variable ? (
-                  <VariableContext.Provider
-                    key={`${variable[0]}-${variable[1]}`}
-                    value={{ state: { ...variables, [variable[0]]: { value: variable[1], loading: false } } }}
-                  >
-                    <GridItemContent
-                      panelOptions={panelOptions}
-                      panelGroupItemId={{
-                        panelGroupId,
-                        panelGroupItemLayoutId: originalI ?? i,
-                      }}
-                      width={calculateGridItemWidth(w, gridColWidth)}
-                    />
-                  </VariableContext.Provider>
-                ) : (
-                  <GridItemContent
-                    panelOptions={panelOptions}
-                    panelGroupItemId={{
-                      panelGroupId,
-                      panelGroupItemLayoutId: originalI ?? i,
-                    }}
-                    width={calculateGridItemWidth(w, gridColWidth)}
-                  />
-                )}
+                <Component
+                  panelGroupId={panelGroupId}
+                  panelGroupItemLayoutId={i}
+                  groupRepeatVariable={repeatVariable}
+                  width={calculateGridItemWidth(w, gridColWidth)}
+                  itemGap={DEFAULT_MARGIN}
+                  panelOptions={panelOptions}
+                  isEditMode={isEditMode}
+                  viewPanelItemId={viewPanelItemId}
+                />
               </ErrorBoundary>
             </div>
           ))}
@@ -254,4 +168,78 @@ const calculateGridItemWidth = (w: number, colWidth: number): number => {
   // 0 * Infinity === NaN, which causes problems with resize contraints
   if (!Number.isFinite(w)) return w;
   return Math.round(colWidth * w + Math.max(0, w - 1) * DEFAULT_MARGIN);
+};
+
+interface RepeatPanelItemProps {
+  panelGroupId: PanelGroupId;
+
+  panelGroupItemLayoutId: string;
+  groupRepeatVariable?: [string, string];
+  width: number;
+  itemGap: number;
+  panelOptions?: PanelOptions;
+  viewPanelItemId?: PanelGroupItemId;
+  isEditMode: boolean;
+}
+
+const Component = ({
+  panelGroupId,
+  panelGroupItemLayoutId,
+  panelOptions,
+  itemGap,
+  groupRepeatVariable,
+  width,
+  isEditMode,
+  viewPanelItemId,
+}: RepeatPanelItemProps): ReactElement => {
+  const panelRepeatVariable = useLayoutRepeatVariable({
+    panelGroupId,
+    panelGroupItemLayoutId,
+  });
+  const variables = useVariableValues();
+  const variableValues = useMemo((): string[] | undefined => {
+    if (!panelRepeatVariable) {
+      return undefined;
+    }
+    const { value: repeatVariableName, mode } = panelRepeatVariable;
+    const value = variables[repeatVariableName];
+    if (value) {
+      if (viewPanelItemId?.repeatVariable?.panel) {
+        return [viewPanelItemId.repeatVariable.panel[1]];
+      } else if (mode === 'selected' && Array.isArray(value.value) && value.value.length > 0) {
+        return value.value;
+      } else {
+        return value.options?.map((option) => option.value);
+      }
+    }
+  }, [panelRepeatVariable, variables, viewPanelItemId?.repeatVariable?.panel]);
+
+  return panelRepeatVariable && variableValues?.length ? (
+    <RepeatGridItemContent
+      panelGroupId={panelGroupId}
+      panelGroupItemLayoutId={panelGroupItemLayoutId}
+      panelRepeatVariable={{
+        name: panelRepeatVariable.value,
+        values: variableValues,
+        maxPer: panelRepeatVariable.alignment === 'vertical' ? 1 : panelRepeatVariable.maxPer,
+      }}
+      groupRepeatVariable={groupRepeatVariable}
+      width={width}
+      itemGap={itemGap}
+      panelOptions={panelOptions}
+      isEditMode={isEditMode}
+    />
+  ) : (
+    <GridItemContent
+      panelOptions={panelOptions}
+      panelGroupItemId={{
+        panelGroupId,
+        panelGroupItemLayoutId: panelGroupItemLayoutId,
+        repeatVariable: {
+          group: groupRepeatVariable,
+        },
+      }}
+      width={width}
+    />
+  );
 };

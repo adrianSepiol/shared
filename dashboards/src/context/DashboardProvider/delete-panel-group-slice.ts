@@ -53,7 +53,7 @@ export const createDeletePanelGroupSlice: StateCreator<
     }
 
     // Get the panel keys for all the panel items in the group we're going to delete
-    const panelKeys = Object.values(group.itemPanelKeys);
+    const panelKeys = Object.values(group.itemConfigs);
 
     set((draft) => {
       // Delete the panel group which also deletes all its items
@@ -66,9 +66,9 @@ export const createDeletePanelGroupSlice: StateCreator<
       // For the panel keys of the items that were just deleted, see if they're still used and if not, also delete the
       // panel definition
       for (const panelKey of panelKeys) {
-        if (usedPanelKeys.has(panelKey)) continue;
+        if (usedPanelKeys.has(panelKey.panelKey)) continue;
 
-        delete draft.panels[panelKey];
+        delete draft.panels[panelKey.panelKey];
       }
     });
   },
@@ -89,12 +89,11 @@ export const createDeletePanelGroupSlice: StateCreator<
     }),
 });
 
-// Helper to get the panel keys of all groups, returning a set to eliminate duplicates
 function getUsedPanelKeys(panelGroups: PanelGroupSlice['panelGroups']): Set<string> {
   const usedPanelKeys = new Set<string>();
   for (const group of Object.values(panelGroups)) {
-    for (const panelKey of Object.values(group.itemPanelKeys)) {
-      usedPanelKeys.add(panelKey);
+    for (const config of Object.values(group.itemConfigs)) {
+      usedPanelKeys.add(config.panelKey);
     }
   }
   return usedPanelKeys;

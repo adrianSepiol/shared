@@ -13,6 +13,13 @@
 
 export type PanelGroupId = number;
 
+export interface RepeatVariable {
+  value: string;
+  maxPer?: number;
+  mode: 'all' | 'selected';
+  alignment: 'horizontal' | 'vertical';
+}
+
 /**
  * Panel Group Item Layout ID type. String identifier for items within a panel group.
  */
@@ -24,7 +31,10 @@ export type PanelGroupItemLayoutId = string;
 export interface PanelGroupItemId {
   panelGroupId: PanelGroupId;
   panelGroupItemLayoutId: PanelGroupItemLayoutId;
-  repeatVariable?: [string, string]; // Optional, used for repeated panel groups. Variable name and value.
+  repeatVariable?: {
+    group?: [string, string];
+    panel?: [string, string];
+  }; // Optional, used for repeated panels and panel groups.
 }
 
 /**
@@ -56,9 +66,6 @@ export interface BaseLayout {
 
 export interface PanelGroupItemLayout extends BaseLayout {
   i: PanelGroupItemLayoutId;
-  repeatVariable?: string;
-  /** Original panel ID before the item was generated from a repeatVariable. Only set on generated items. */
-  originalI?: PanelGroupItemLayoutId;
 }
 
 /**
@@ -71,7 +78,7 @@ export interface PanelGroupDefinition {
   repeatedOriginId?: PanelGroupId; // ID of the original panel group from which this repeated group is derived
   repeatVariable?: string; // Optional, used for repeated panel groups
   itemLayouts: PanelGroupItemLayout[];
-  itemPanelKeys: Record<PanelGroupItemLayoutId, string>;
+  itemConfigs: Record<PanelGroupItemLayoutId, { panelKey: string; repeatVariable?: RepeatVariable }>;
 }
 
 /**

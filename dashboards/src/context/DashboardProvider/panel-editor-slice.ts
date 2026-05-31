@@ -16,8 +16,8 @@ import { PanelEditorValues, PanelGroupId } from '@perses-dev/spec';
 import { StateCreator } from 'zustand';
 import { generatePanelKey, getYForNewRow } from '../../utils';
 import { PanelGroupDefinition, PanelGroupItemId, PanelGroupItemLayout } from '../../model';
-import { generateId, Middleware, createPanelDefinition } from './common';
-import { PanelGroupSlice, addPanelGroup, createEmptyPanelGroup } from './panel-group-slice';
+import { createPanelDefinition, generateId, Middleware } from './common';
+import { addPanelGroup, createEmptyPanelGroup, PanelGroupSlice } from './panel-group-slice';
 import { PanelSlice } from './panel-slice';
 
 /**
@@ -91,9 +91,16 @@ export function createPanelEditorSlice(): StateCreator<
 
       // Figure out the panel key at that location
       const { panelGroupId, panelGroupItemLayoutId: panelGroupLayoutId } = panelGroupItemId;
-      const panelKey = panelGroups[panelGroupId]?.itemPanelKeys[panelGroupLayoutId];
+      const panelGroup = panelGroups[panelGroupId];
+      const itemPanelKey = panelGroup?.itemConfigs[panelGroupLayoutId];
+      const panelKey = itemPanelKey?.panelKey;
       if (panelKey === undefined) {
         throw new Error(`Could not find Panel Group item ${panelGroupItemId}`);
+      }
+
+      const layout = panelGroup?.itemLayouts.find((layout) => layout.i === panelGroupLayoutId);
+      if (layout === undefined) {
+        throw new Error(`Could not find layout for panel group item ${panelGroupItemId}`);
       }
 
       // Find the panel to edit
@@ -108,6 +115,11 @@ export function createPanelEditorSlice(): StateCreator<
         initialValues: {
           groupId: panelGroupItemId.panelGroupId,
           panelDefinition: panelToEdit,
+          layoutDefinition: {
+            width: layout.w,
+            height: layout.h,
+            repeatVariable: itemPanelKey?.repeatVariable,
+          },
         },
         applyChanges: (next) => {
           set((state) => {
@@ -116,10 +128,19 @@ export function createPanelEditorSlice(): StateCreator<
             // Always update the repeat variable on the current group item
             const currentGroup = state.panelGroups[panelGroupId];
             const layout = currentGroup?.itemLayouts.findIndex((layout) => layout.i === panelGroupLayoutId);
-            if (layout === undefined || layout === -1) {
+            if (currentGroup === undefined || layout === undefined || layout === -1) {
               throw new Error(`Could not find layout for panel group item ${panelGroupItemId}`);
             }
-            currentGroup.itemLayouts[layout].repeatVariable = next.panelDefinition.spec.display?.repeatVariable;
+            const currentLayout = currentGroup.itemLayouts[layout];
+            if (currentLayout === undefined) {
+              throw new Error(`Could not find layout for panel group item ${panelGroupItemId}`);
+            }
+            currentGroup.itemConfigs[panelGroupLayoutId] = {
+              panelKey,
+              repeatVariable: next.layoutDefinition.repeatVariable,
+            };
+            currentLayout.w = next.layoutDefinition.width;
+            currentLayout.h = next.layoutDefinition.height;
 
             // If the panel didn't change groups, nothing else to do
             if (next.groupId === panelGroupId) {
@@ -134,14 +155,14 @@ export function createPanelEditorSlice(): StateCreator<
 
             const existingLayoutIdx = existingGroup.itemLayouts.findIndex((layout) => layout.i === panelGroupLayoutId);
             const existingLayout = existingGroup.itemLayouts[existingLayoutIdx];
-            const existingPanelKey = existingGroup.itemPanelKeys[panelGroupLayoutId];
-            if (existingLayoutIdx === -1 || existingLayout === undefined || existingPanelKey === undefined) {
+            const existingPanelConfig = existingGroup.itemConfigs[panelGroupLayoutId];
+            if (existingLayoutIdx === -1 || existingLayout === undefined || existingPanelConfig === undefined) {
               throw new Error(`Missing panel group item ${panelGroupLayoutId}`);
             }
 
             // Remove item from the old group
             existingGroup.itemLayouts.splice(existingLayoutIdx, 1);
-            delete existingGroup.itemPanelKeys[panelGroupLayoutId];
+            delete existingGroup.itemConfigs[panelGroupLayoutId];
 
             // Add item to the end of the new group
             const newGroup = state.panelGroups[next.groupId];
@@ -155,9 +176,8 @@ export function createPanelEditorSlice(): StateCreator<
               y: getYForNewRow(newGroup),
               w: existingLayout.w,
               h: existingLayout.h,
-              repeatVariable: existingLayout.repeatVariable,
             });
-            newGroup.itemPanelKeys[existingLayout.i] = existingPanelKey;
+            newGroup.itemConfigs[existingLayout.i] = existingPanelConfig;
           });
         },
         close: () => {
@@ -188,6 +208,7 @@ export function createPanelEditorSlice(): StateCreator<
         initialValues: {
           groupId: panelGroupId,
           panelDefinition: get().initialValues?.panelDefinition ?? createPanelDefinition(),
+          layoutDefinition: { width: 12, height: 6 },
         },
         applyChanges: (next) => {
           const panelKey = generatePanelKey();
@@ -204,11 +225,14 @@ export function createPanelEditorSlice(): StateCreator<
               i: generateId().toString(),
               x: 0,
               y: getYForNewRow(group),
-              w: 12,
-              h: 6,
+              w: next.layoutDefinition.width,
+              h: next.layoutDefinition.height,
             };
             group.itemLayouts.push(layout);
-            group.itemPanelKeys[layout.i] = panelKey;
+            group.itemConfigs[layout.i] = {
+              panelKey,
+              repeatVariable: next.layoutDefinition.repeatVariable,
+            };
           });
         },
         close: () => {

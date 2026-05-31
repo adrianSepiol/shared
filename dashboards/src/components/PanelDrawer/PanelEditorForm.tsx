@@ -11,24 +11,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ReactElement, useCallback, useEffect, useState } from 'react';
+import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { Box, Button, Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { PanelDefinition, PanelEditorValues } from '@perses-dev/spec';
 import {
+  Action,
   DiscardChangesConfirmationDialog,
   ErrorAlert,
   ErrorBoundary,
-  Action,
-  getTitleAction,
   getSubmitText,
+  getTitleAction,
 } from '@perses-dev/components';
-import { PluginKindSelect, usePluginEditor, useValidationSchemas } from '@perses-dev/plugin-system';
+import {
+  PluginKindSelect,
+  usePluginEditor,
+  useValidationSchemas,
+  useVariableValues,
+  VariableContext,
+} from '@perses-dev/plugin-system';
 import { Controller, FormProvider, SubmitHandler, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useListPanelGroups, useVariableDefinitions } from '../../context';
+import { useListPanelGroups } from '../../context';
 import { PanelEditorProvider } from '../../context/PanelEditorProvider/PanelEditorProvider';
 import { usePanelEditor } from './usePanelEditor';
 import { PanelQueriesSharedControls } from './PanelQueriesSharedControls';
+import { RepeatVariableOptions } from './RepeatVariableOptions';
 
 export interface PanelEditorFormProps {
   initialValues: PanelEditorValues;
@@ -41,8 +48,10 @@ export interface PanelEditorFormProps {
 export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
   const { initialValues, initialAction, panelKey, onSave, onClose } = props;
   const panelGroups = useListPanelGroups();
-  const variableDefinitions = useVariableDefinitions();
-  const variableNames = variableDefinitions.map((v) => v.spec.name).sort((a, b) => a.localeCompare(b));
+  // todo section for repeat variables (header)
+  // todo horizontal mode
+  const variableValues = useVariableValues();
+
   const { panelDefinition, setName, setDescription, setLinks, setQueries, setPlugin, setPanelDefinition } =
     usePanelEditor(initialValues.panelDefinition);
   const { plugin } = panelDefinition.spec;
@@ -50,7 +59,7 @@ export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
 
   const { panelEditorSchema } = useValidationSchemas();
   const form = useForm<PanelEditorValues>({
-    // resolver: zodResolver(panelEditorSchema),
+    resolver: zodResolver(panelEditorSchema),
     mode: 'onBlur',
     defaultValues: initialValues,
   });
@@ -130,6 +139,17 @@ export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
   const watchedName = useWatch({ control: form.control, name: 'panelDefinition.spec.display.name' });
   const watchedDescription = useWatch({ control: form.control, name: 'panelDefinition.spec.display.description' });
   const watchedPluginKind = useWatch({ control: form.control, name: 'panelDefinition.spec.plugin.kind' });
+  const watchedRepeatVariable = useWatch({ control: form.control, name: 'layoutDefinition.repeatVariable' });
+
+  const repeatVariableValue = useMemo(() => {
+    if (watchedRepeatVariable && variableValues[watchedRepeatVariable.value]) {
+      return (
+        variableValues[watchedRepeatVariable.value]?.options?.[0]?.value ??
+        variableValues[watchedRepeatVariable.value]?.value
+      );
+    }
+    return undefined;
+  }, [variableValues, watchedRepeatVariable]);
 
   const handleSubmit = useCallback(() => {
     form.handleSubmit(processForm)();
@@ -207,33 +227,6 @@ export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
                 )}
               />
             </Grid>
-            <Grid item xs={4}>
-              <Controller
-                control={form.control}
-                name="panelDefinition.spec.display.repeatVariable"
-                render={({ field }) => (
-                  <TextField
-                    select
-                    {...field}
-                    fullWidth
-                    label="Repeat Variable"
-                    value={field.value ?? ''}
-                    onChange={(e) => {
-                      field.onChange(e.target.value === '' ? undefined : e.target.value);
-                    }}
-                  >
-                    <MenuItem value="">
-                      <Typography sx={{ fontStyle: 'italic' }}>None</Typography>
-                    </MenuItem>
-                    {variableNames.map((name) => (
-                      <MenuItem key={name} value={name}>
-                        {name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                )}
-              />
-            </Grid>
             <Grid item xs={8}>
               <Controller
                 control={form.control}
@@ -277,18 +270,46 @@ export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
                 )}
               />
             </Grid>
-
+            <Grid item xs={12}>
+              <RepeatVariableOptions />
+            </Grid>
             <ErrorBoundary FallbackComponent={ErrorAlert}>
-              <PanelQueriesSharedControls
-                control={form.control}
-                plugin={plugin}
-                panelDefinition={panelDefinition}
-                onQueriesChange={(q) => setQueries(q)}
-                onPluginSpecChange={(spec) => {
-                  pluginEditor.onSpecChange(spec);
-                }}
-                onJSONChange={handlePanelDefinitionChange}
-              />
+              {watchedRepeatVariable && repeatVariableValue ? (
+                <VariableContext.Provider
+                  value={{
+                    state: {
+                      ...variableValues,
+                      [watchedRepeatVariable.value]: {
+                        ...variableValues[watchedRepeatVariable.value],
+                        value: repeatVariableValue,
+                        loading: false,
+                      },
+                    },
+                  }}
+                >
+                  <PanelQueriesSharedControls
+                    control={form.control}
+                    plugin={plugin}
+                    panelDefinition={panelDefinition}
+                    onQueriesChange={(q) => setQueries(q)}
+                    onPluginSpecChange={(spec) => {
+                      pluginEditor.onSpecChange(spec);
+                    }}
+                    onJSONChange={handlePanelDefinitionChange}
+                  />
+                </VariableContext.Provider>
+              ) : (
+                <PanelQueriesSharedControls
+                  control={form.control}
+                  plugin={plugin}
+                  panelDefinition={panelDefinition}
+                  onQueriesChange={(q) => setQueries(q)}
+                  onPluginSpecChange={(spec) => {
+                    pluginEditor.onSpecChange(spec);
+                  }}
+                  onJSONChange={handlePanelDefinitionChange}
+                />
+              )}
             </ErrorBoundary>
           </Grid>
         </Box>
