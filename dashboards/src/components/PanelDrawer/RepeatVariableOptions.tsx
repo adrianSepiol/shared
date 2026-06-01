@@ -17,10 +17,11 @@ import { PanelEditorValues, VariableDefinition } from '@perses-dev/spec';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useAllVariableDefinitions } from '@perses-dev/dashboards';
 import { DEFAULT_REPEAT_ALIGNMENT, DEFAULT_REPEAT_MODE } from '../../utils';
+import { GRID_LAYOUT_COLS, GRID_LAYOUT_SMALL_BREAKPOINT } from '../../constants';
 
 export function RepeatVariableOptions(): ReactElement {
   const variableDefinitions: VariableDefinition[] = useAllVariableDefinitions();
-  const { control, formState } = useFormContext<PanelEditorValues>();
+  const { control, formState, setValue } = useFormContext<PanelEditorValues>();
 
   const watchedRepeatVariable = useWatch({ control, name: 'layoutDefinition.repeatVariable' });
 
@@ -54,6 +55,9 @@ export function RepeatVariableOptions(): ReactElement {
                       ? { ...watchedRepeatVariable, value: selected }
                       : { value: selected, mode: DEFAULT_REPEAT_MODE, alignment: DEFAULT_REPEAT_ALIGNMENT }
                   );
+                  if (!watchedRepeatVariable) {
+                    setValue('layoutDefinition.width', GRID_LAYOUT_COLS[GRID_LAYOUT_SMALL_BREAKPOINT]);
+                  }
                 }
               }}
             >
