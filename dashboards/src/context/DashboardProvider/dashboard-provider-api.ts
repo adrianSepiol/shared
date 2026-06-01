@@ -13,13 +13,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { DurationString, Link, PanelDefinition, PanelGroupId } from '@perses-dev/spec';
-import {
-  DashboardResource,
-  PanelGroupDefinition,
-  PanelGroupItemId,
-  PanelGroupItemLayout,
-  RepeatVariable,
-} from '../../model';
+import { DashboardResource, PanelGroupDefinition, PanelGroupItemId, PanelGroupItemLayout } from '../../model';
 import { DashboardStoreState, useDashboardStore } from './DashboardProvider';
 import { DeletePanelGroupDialogState } from './delete-panel-group-slice';
 import { PanelGroupEditor } from './panel-group-editor-slice';
@@ -250,9 +244,7 @@ export function useDeletePanelGroupDialog(): {
   };
 }
 
-function useItemConfig(
-  panelGroupItemId?: PanelGroupItemId
-): undefined | { panelKey: string; repeatVariable?: RepeatVariable } {
+function useItemConfig(panelGroupItemId?: PanelGroupItemId): string | undefined {
   return useDashboardStore(
     useCallback(
       (store) => {
@@ -260,20 +252,14 @@ function useItemConfig(
           return undefined;
         }
 
-        return store.panelGroups[panelGroupItemId.panelGroupId]?.itemConfigs[panelGroupItemId.panelGroupItemLayoutId];
+        return store.panelGroups[panelGroupItemId.panelGroupId]?.itemPanelKeys[panelGroupItemId.panelGroupItemLayoutId];
       },
       [panelGroupItemId]
     )
   );
 }
 export function usePanelKey(panelGroupItemId?: PanelGroupItemId): string | undefined {
-  const config = useItemConfig(panelGroupItemId);
-  return config?.panelKey;
-}
-
-export function useLayoutRepeatVariable(panelGroupItemId?: PanelGroupItemId): RepeatVariable | undefined {
-  const config = useItemConfig(panelGroupItemId);
-  return config?.repeatVariable;
+  return useItemConfig(panelGroupItemId);
 }
 
 /**
@@ -284,9 +270,9 @@ export function usePanel(panelGroupItemId: PanelGroupItemId): PanelDefinition {
   const panel = useDashboardStore(
     useCallback(
       (store) => {
-        const itemConfig = store.panelGroups[panelGroupId]?.itemConfigs[panelGroupLayoutId];
-        if (itemConfig === undefined) return;
-        return store.panels[itemConfig.panelKey];
+        const panelKey = store.panelGroups[panelGroupId]?.itemPanelKeys[panelGroupLayoutId];
+        if (panelKey === undefined) return;
+        return store.panels[panelKey];
       },
       [panelGroupId, panelGroupLayoutId]
     )

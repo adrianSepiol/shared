@@ -1,6 +1,6 @@
 import { ReactElement, useMemo } from 'react';
 import { useVariableValues, VariableContext } from '@perses-dev/plugin-system';
-import { GridItemContent, PanelOptions, useLayoutRepeatVariable } from '@perses-dev/dashboards';
+import { GridItemContent, PanelOptions } from '@perses-dev/dashboards';
 import { PanelGroupId } from '@perses-dev/spec';
 import { Box } from '@mui/material';
 

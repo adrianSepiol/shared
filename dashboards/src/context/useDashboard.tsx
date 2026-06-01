@@ -121,7 +121,7 @@ function convertPanelGroupsToLayouts(
     if (group === undefined) {
       throw new Error('panel group not found');
     }
-    const { title, isCollapsed, repeatVariable, itemLayouts, itemConfigs } = group;
+    const { title, isCollapsed, repeatVariable, itemLayouts, itemPanelKeys } = group;
     let display = undefined;
     if (title || isCollapsed !== undefined) {
       display = {
@@ -136,8 +136,8 @@ function convertPanelGroupsToLayouts(
       spec: {
         display,
         items: itemLayouts.map((layout) => {
-          const panelConfig = itemConfigs[layout.i];
-          if (panelConfig === undefined) {
+          const panelKey = itemPanelKeys[layout.i];
+          if (panelKey === undefined) {
             throw new Error(`Missing panel key of layout ${layout.i}`);
           }
           return {
@@ -145,8 +145,8 @@ function convertPanelGroupsToLayouts(
             y: layout.y,
             width: layout.w,
             height: layout.h,
-            content: createPanelRef(panelConfig.panelKey),
-            repeatVariable: panelConfig.repeatVariable,
+            content: createPanelRef(panelKey),
+            repeatVariable: layout.repeatVariable,
           };
         }),
         repeatVariable: repeatVariable,

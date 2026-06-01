@@ -97,9 +97,7 @@ function findPanelGroupItemIdOfPanelRef(
   panelRef: VirtualPanelRef
 ): PanelGroupItemId | undefined {
   for (const panelGroup of Object.values(panelGroups)) {
-    const itemPanel = Object.entries(panelGroup.itemConfigs ?? []).find(
-      ([_, value]) => value.panelKey === panelRef.ref
-    );
+    const itemPanel = Object.entries(panelGroup.itemPanelKeys ?? []).find(([_, panelKey]) => panelKey === panelRef.ref);
     if (itemPanel) {
       const [key] = itemPanel;
       return {
@@ -122,9 +120,9 @@ function findPanelRefOfPanelGroupItemId(
   }
   const panelGroup = panelGroups[panelGroupItemId.panelGroupId];
   if (panelGroup) {
-    const panelConfig = panelGroup.itemConfigs[panelGroupItemId.panelGroupItemLayoutId];
-    if (panelConfig) {
-      return { ref: panelConfig.panelKey, repeatVariable: panelGroupItemId.repeatVariable };
+    const panelKey = panelGroup.itemPanelKeys[panelGroupItemId.panelGroupItemLayoutId];
+    if (panelKey) {
+      return { ref: panelKey, repeatVariable: panelGroupItemId.repeatVariable };
     }
   }
   return undefined;

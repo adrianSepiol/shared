@@ -92,8 +92,7 @@ export function createPanelEditorSlice(): StateCreator<
       // Figure out the panel key at that location
       const { panelGroupId, panelGroupItemLayoutId: panelGroupLayoutId } = panelGroupItemId;
       const panelGroup = panelGroups[panelGroupId];
-      const itemPanelKey = panelGroup?.itemConfigs[panelGroupLayoutId];
-      const panelKey = itemPanelKey?.panelKey;
+      const panelKey = panelGroup?.itemPanelKeys[panelGroupLayoutId];
       if (panelKey === undefined) {
         throw new Error(`Could not find Panel Group item ${panelGroupItemId}`);
       }
@@ -118,7 +117,7 @@ export function createPanelEditorSlice(): StateCreator<
           layoutDefinition: {
             width: layout.w,
             height: layout.h,
-            repeatVariable: itemPanelKey?.repeatVariable,
+            repeatVariable: layout.repeatVariable,
           },
         },
         applyChanges: (next) => {
@@ -135,10 +134,8 @@ export function createPanelEditorSlice(): StateCreator<
             if (currentLayout === undefined) {
               throw new Error(`Could not find layout for panel group item ${panelGroupItemId}`);
             }
-            currentGroup.itemConfigs[panelGroupLayoutId] = {
-              panelKey,
-              repeatVariable: next.layoutDefinition.repeatVariable,
-            };
+            currentGroup.itemPanelKeys[panelGroupLayoutId] = panelKey;
+            currentLayout.repeatVariable = next.layoutDefinition.repeatVariable;
             currentLayout.w = next.layoutDefinition.width;
             currentLayout.h = next.layoutDefinition.height;
 
@@ -155,14 +152,14 @@ export function createPanelEditorSlice(): StateCreator<
 
             const existingLayoutIdx = existingGroup.itemLayouts.findIndex((layout) => layout.i === panelGroupLayoutId);
             const existingLayout = existingGroup.itemLayouts[existingLayoutIdx];
-            const existingPanelConfig = existingGroup.itemConfigs[panelGroupLayoutId];
-            if (existingLayoutIdx === -1 || existingLayout === undefined || existingPanelConfig === undefined) {
+            const existingPanelKey = existingGroup.itemPanelKeys[panelGroupLayoutId];
+            if (existingLayoutIdx === -1 || existingLayout === undefined || existingPanelKey === undefined) {
               throw new Error(`Missing panel group item ${panelGroupLayoutId}`);
             }
 
             // Remove item from the old group
             existingGroup.itemLayouts.splice(existingLayoutIdx, 1);
-            delete existingGroup.itemConfigs[panelGroupLayoutId];
+            delete existingGroup.itemPanelKeys[panelGroupLayoutId];
 
             // Add item to the end of the new group
             const newGroup = state.panelGroups[next.groupId];
@@ -176,8 +173,9 @@ export function createPanelEditorSlice(): StateCreator<
               y: getYForNewRow(newGroup),
               w: existingLayout.w,
               h: existingLayout.h,
+              repeatVariable: existingLayout.repeatVariable,
             });
-            newGroup.itemConfigs[existingLayout.i] = existingPanelConfig;
+            newGroup.itemPanelKeys[existingLayout.i] = existingPanelKey;
           });
         },
         close: () => {
@@ -227,12 +225,10 @@ export function createPanelEditorSlice(): StateCreator<
               y: getYForNewRow(group),
               w: next.layoutDefinition.width,
               h: next.layoutDefinition.height,
-            };
-            group.itemLayouts.push(layout);
-            group.itemConfigs[layout.i] = {
-              panelKey,
               repeatVariable: next.layoutDefinition.repeatVariable,
             };
+            group.itemLayouts.push(layout);
+            group.itemPanelKeys[layout.i] = panelKey;
           });
         },
         close: () => {

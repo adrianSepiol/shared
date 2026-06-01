@@ -16,9 +16,7 @@ import { Grid2 as Grid, MenuItem, TextField, Typography } from '@mui/material';
 import { PanelEditorValues, VariableDefinition } from '@perses-dev/spec';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useAllVariableDefinitions } from '@perses-dev/dashboards';
-
-const DEFAULT_REPEAT_MODE = 'all';
-const DEFAULT_REPEAT_ALIGNMENT = 'horizontal';
+import { DEFAULT_REPEAT_ALIGNMENT, DEFAULT_REPEAT_MODE } from '../../utils';
 
 export function RepeatVariableOptions(): ReactElement {
   const variableDefinitions: VariableDefinition[] = useAllVariableDefinitions();
@@ -26,7 +24,7 @@ export function RepeatVariableOptions(): ReactElement {
 
   const watchedRepeatVariable = useWatch({ control, name: 'layoutDefinition.repeatVariable' });
 
-  const isVertical = watchedRepeatVariable?.alignment === 'vertical';
+  const isVertical = (watchedRepeatVariable?.alignment ?? DEFAULT_REPEAT_ALIGNMENT) === 'vertical';
 
   return (
     <Grid container spacing={2} width="100%">
@@ -83,8 +81,11 @@ export function RepeatVariableOptions(): ReactElement {
               fullWidth
               label="Mode"
               error={!!formState.errors.layoutDefinition?.repeatVariable?.mode}
-              helperText={formState.errors.layoutDefinition?.repeatVariable?.mode?.message}
-              value={watchedRepeatVariable?.mode ?? ''}
+              helperText={
+                formState.errors.layoutDefinition?.repeatVariable?.mode?.message ??
+                'Repeat for all values or only the currently selected ones'
+              }
+              value={watchedRepeatVariable?.mode ?? DEFAULT_REPEAT_MODE}
               disabled={!watchedRepeatVariable}
               onChange={(event) => {
                 const selected = event.target.value;
@@ -110,7 +111,7 @@ export function RepeatVariableOptions(): ReactElement {
               label="Alignment"
               error={!!formState.errors.layoutDefinition?.repeatVariable?.alignment}
               helperText={formState.errors.layoutDefinition?.repeatVariable?.alignment?.message}
-              value={watchedRepeatVariable?.alignment ?? ''}
+              value={watchedRepeatVariable?.alignment ?? DEFAULT_REPEAT_ALIGNMENT}
               disabled={!watchedRepeatVariable}
               onChange={(event) => {
                 const selected = event.target.value;

@@ -16,8 +16,8 @@ export type PanelGroupId = number;
 export interface RepeatVariable {
   value: string;
   maxPer?: number;
-  mode: 'all' | 'selected';
-  alignment: 'horizontal' | 'vertical';
+  mode?: 'all' | 'selected';
+  alignment?: 'horizontal' | 'vertical';
 }
 
 /**
@@ -66,6 +66,7 @@ export interface BaseLayout {
 
 export interface PanelGroupItemLayout extends BaseLayout {
   i: PanelGroupItemLayoutId;
+  repeatVariable?: RepeatVariable;
 }
 
 /**
@@ -78,7 +79,7 @@ export interface PanelGroupDefinition {
   repeatedOriginId?: PanelGroupId; // ID of the original panel group from which this repeated group is derived
   repeatVariable?: string; // Optional, used for repeated panel groups
   itemLayouts: PanelGroupItemLayout[];
-  itemConfigs: Record<PanelGroupItemLayoutId, { panelKey: string; repeatVariable?: RepeatVariable }>;
+  itemPanelKeys: Record<PanelGroupItemLayoutId, string>;
 }
 
 /**
