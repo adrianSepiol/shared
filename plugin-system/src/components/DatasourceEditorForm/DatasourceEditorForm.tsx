@@ -16,7 +16,7 @@ import { Box, Divider, FormControlLabel, Grid, Stack, Switch, TextField, Typogra
 import { DiscardChangesConfirmationDialog, FormActions, getSubmitText, getTitleAction } from '@perses-dev/components';
 import { DispatchWithoutAction, ReactElement, useState } from 'react';
 import { Controller, FormProvider, SubmitHandler, useForm } from 'react-hook-form';
-import { Action, DatasourceDefinition } from '@perses-dev/client';
+import { Action, DatasourceDefinition, DatasourceSpec } from '@perses-dev/client';
 import { useValidationSchemas } from '../../context';
 import { PluginEditor } from '../PluginEditor';
 
@@ -29,10 +29,21 @@ interface DatasourceEditorFormProps {
   onSave: (def: DatasourceDefinition) => void;
   onClose: DispatchWithoutAction;
   onDelete?: DispatchWithoutAction;
+  testConnection?: (spec: DatasourceSpec, healthCheckPath: string) => Promise<void>;
 }
 
 export function DatasourceEditorForm(props: DatasourceEditorFormProps): ReactElement {
-  const { initialDatasourceDefinition, action, isDraft, isReadonly, onActionChange, onSave, onClose, onDelete } = props;
+  const {
+    initialDatasourceDefinition,
+    action,
+    isDraft,
+    isReadonly,
+    onActionChange,
+    onSave,
+    onClose,
+    onDelete,
+    testConnection,
+  } = props;
 
   const [isDiscardDialogOpened, setDiscardDialogOpened] = useState<boolean>(false);
   const titleAction = getTitleAction(action, isDraft);
@@ -222,6 +233,7 @@ export function DatasourceEditorForm(props: DatasourceEditorFormProps): ReactEle
               onChange={(v) => {
                 field.onChange({ kind: v.selection.kind, spec: v.spec });
               }}
+              testConnection={testConnection}
             />
           )}
         />

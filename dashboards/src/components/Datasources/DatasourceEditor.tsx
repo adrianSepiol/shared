@@ -29,10 +29,10 @@ import PencilIcon from 'mdi-material-ui/Pencil';
 import TrashIcon from 'mdi-material-ui/TrashCan';
 import { DatasourceSpec } from '@perses-dev/spec';
 import { DatasourceEditorForm, ValidationProvider } from '@perses-dev/plugin-system';
-import { ReactElement, useState } from 'react';
+import { ReactElement, useMemo, useState } from 'react';
 import { useImmer } from 'use-immer';
-import { Action, DatasourceDefinition } from '@perses-dev/client';
-import { useDiscardChangesConfirmationDialog } from '../../context';
+import { Action, createTestDatasourceConnection, DatasourceDefinition } from '@perses-dev/client';
+import { useDashboard, useDiscardChangesConfirmationDialog } from '../../context';
 
 export function DatasourceEditor(props: {
   datasources: Record<string, DatasourceSpec>;
@@ -42,6 +42,15 @@ export function DatasourceEditor(props: {
   const [datasources, setDatasources] = useImmer(props.datasources);
   const [datasourceFormAction, setDatasourceFormAction] = useState<Action>('update');
   const [datasourceEdit, setDatasourceEdit] = useState<DatasourceDefinition | null>(null);
+  const { dashboard } = useDashboard();
+  const testConnection = useMemo(
+    () =>
+      createTestDatasourceConnection({
+        project: dashboard.metadata.project,
+        dashboard: dashboard.metadata.name,
+      }),
+    [dashboard.metadata.project, dashboard.metadata.name]
+  );
   const defaultSpec: DatasourceSpec = {
     default: false,
     plugin: {
@@ -113,6 +122,7 @@ export function DatasourceEditor(props: {
             onClose={() => {
               setDatasourceEdit(null);
             }}
+            testConnection={testConnection}
           />
         </ValidationProvider>
       ) : (

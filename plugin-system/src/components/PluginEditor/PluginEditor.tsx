@@ -39,6 +39,7 @@ export function PluginEditor(props: PluginEditorProps): ReactElement {
     isReadonly,
     onRunQuery,
     filteredQueryPlugins,
+    testConnection,
     ...others
   } = props;
 
@@ -97,6 +98,7 @@ export function PluginEditor(props: PluginEditorProps): ReactElement {
           value={value.spec}
           onChange={handleSpecChange}
           isReadonly={isReadonly}
+          testConnection={testConnection}
         />
       </ErrorBoundary>
     </Box>

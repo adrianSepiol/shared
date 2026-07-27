@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { DatasourceSpec, HTTPDatasourceSpec } from '@perses-dev/spec';
+import { fetch } from '../util';
 import { DatasourceResource, DatasourceSelector, GlobalDatasourceResource } from './datasource';
 
 /**
@@ -19,13 +21,76 @@ import { DatasourceResource, DatasourceSelector, GlobalDatasourceResource } from
 export interface BuildDatasourceProxyUrlParams {
   project?: string;
   dashboard?: string;
-  name: string;
+  /** Omit to generate an unsaved-datasource proxy URL */
+  name?: string;
 }
 
 /**
  * Function type for building datasource proxy URLs
  */
 export type BuildDatasourceProxyUrlFunc = (params: BuildDatasourceProxyUrlParams) => string;
+
+/**
+ * Builds a proxy URL for a datasource. When name is omitted the URL targets the
+ * unsaved-datasource proxy endpoint (used for testing connectivity before saving).
+ * Reads api_prefix from window.PERSES_APP_CONFIG if available.
+ */
+export function buildProxyUrl({ project, dashboard, name }: BuildDatasourceProxyUrlParams): string {
+  const apiPrefix = (typeof window !== 'undefined' && window.PERSES_APP_CONFIG?.api_prefix) || '';
+  let url = `${!project && !dashboard ? 'globaldatasources' : 'datasources'}`;
+  if (dashboard) url = `dashboards/${encodeURIComponent(dashboard)}/${url}`;
+  if (project) url = `projects/${encodeURIComponent(project)}/${url}`;
+  url = name === undefined ? `unsaved/${url}` : `${url}/${encodeURIComponent(name)}`;
+  return `${apiPrefix}/proxy/${url}`;
+}
+
+interface UnsavedDatasourceProxyBody {
+  method: string;
+  body?: Uint8Array | null;
+  spec: DatasourceSpec;
+}
+
+function isHTTPDatasourceSpec(pluginSpec: unknown): pluginSpec is HTTPDatasourceSpec {
+  if (typeof pluginSpec !== 'object' || pluginSpec === null) return false;
+  const s = pluginSpec as Record<string, unknown>;
+  const hasDirectUrl = 'directUrl' in s && (typeof s['directUrl'] === 'string' || s['directUrl'] === undefined);
+  const hasProxy = 'proxy' in s && typeof s['proxy'] === 'object' && s['proxy'] !== null;
+  return hasDirectUrl || hasProxy;
+}
+
+/**
+ * Creates a function that tests connectivity for an unsaved datasource.
+ * Narrows plugin.spec to HTTPDatasourceSpec and uses directUrl for direct mode
+ * or the proxy endpoint for proxy mode. Throws for unrecognized spec shapes.
+ */
+export function createTestDatasourceConnection({ project, dashboard }: { project?: string; dashboard?: string } = {}): (
+  spec: DatasourceSpec,
+  healthCheckPath: string
+) => Promise<void> {
+  return async (spec: DatasourceSpec, healthCheckPath: string): Promise<void> => {
+    const normalizedPath = healthCheckPath.startsWith('/') ? healthCheckPath : `/${healthCheckPath}`;
+    const pluginSpec = spec.plugin.spec;
+
+    if (!isHTTPDatasourceSpec(pluginSpec)) {
+      throw new Error(`Unsupported datasource spec type for plugin kind '${spec.plugin.kind}'`);
+    }
+
+    if (pluginSpec.directUrl !== undefined) {
+      await fetch(`${pluginSpec.directUrl}${normalizedPath}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } else if (pluginSpec.proxy !== undefined) {
+      const proxyUrl = buildProxyUrl({ project, dashboard });
+      const body: UnsavedDatasourceProxyBody = { method: 'GET', spec, body: null };
+      await fetch(`${proxyUrl}${normalizedPath}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    }
+  };
+}
 
 /**
  * The external API contract for fetching datasource resources.

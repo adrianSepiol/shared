@@ -11,8 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Grid, IconButton, MenuItem, TextField, Typography } from '@mui/material';
+import { Box, Grid, IconButton, MenuItem, TextField, Typography } from '@mui/material';
 import React, { Fragment, ReactElement, useState } from 'react';
+import { z } from 'zod';
 import { produce } from 'immer';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import MinusIcon from 'mdi-material-ui/Minus';
@@ -20,6 +21,9 @@ import PlusIcon from 'mdi-material-ui/Plus';
 import { HTTPDatasourceSpec } from '@perses-dev/spec';
 import { RequestHeaders } from '@perses-dev/client';
 import { OptionsEditorRadios } from '../OptionsEditorRadios';
+import { DatasourceTestConnectionButton } from '../DatasourceTestConnectionButton';
+
+const urlSchema = z.string().url();
 
 type HeaderEntry = {
   name: string;
@@ -36,10 +40,11 @@ export interface HTTPSettingsEditor {
   isReadonly?: boolean;
   initialSpecDirect: HTTPDatasourceSpec;
   initialSpecProxy: HTTPDatasourceSpec;
+  testConnection?: () => Promise<void>;
 }
 
 export function HTTPSettingsEditor(props: HTTPSettingsEditor): ReactElement {
-  const { value, onChange, isReadonly, initialSpecDirect, initialSpecProxy } = props;
+  const { value, onChange, isReadonly, initialSpecDirect, initialSpecProxy, testConnection } = props;
   const strDirect = 'Direct access';
   const strProxy = 'Proxy';
 
@@ -134,6 +139,14 @@ export function HTTPSettingsEditor(props: HTTPSettingsEditor): ReactElement {
               />
             )}
           />
+          {testConnection && (
+            <Box mb={2} display="flex" justifyContent="flex-end">
+              <DatasourceTestConnectionButton
+                testConnection={testConnection}
+                disabled={!urlSchema.safeParse(value.proxy?.spec.url).success}
+              />
+            </Box>
+          )}
           <Typography variant="h5" mb={2}>
             Allowed endpoints
           </Typography>
@@ -410,31 +423,41 @@ export function HTTPSettingsEditor(props: HTTPSettingsEditor): ReactElement {
     {
       label: strDirect,
       content: (
-        <Controller
-          name="URL"
-          render={({ field, fieldState }) => (
-            <TextField
-              {...field}
-              fullWidth
-              label="URL"
-              value={value.directUrl || ''}
-              error={!!fieldState.error}
-              helperText={fieldState.error?.message}
-              InputProps={{
-                readOnly: isReadonly,
-              }}
-              InputLabelProps={{ shrink: isReadonly ? true : undefined }}
-              onChange={(e) => {
-                field.onChange(e);
-                onChange(
-                  produce(value, (draft) => {
-                    draft.directUrl = e.target.value;
-                  })
-                );
-              }}
-            />
+        <>
+          <Controller
+            name="URL"
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                fullWidth
+                label="URL"
+                value={value.directUrl || ''}
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+                InputProps={{
+                  readOnly: isReadonly,
+                }}
+                InputLabelProps={{ shrink: isReadonly ? true : undefined }}
+                onChange={(e) => {
+                  field.onChange(e);
+                  onChange(
+                    produce(value, (draft) => {
+                      draft.directUrl = e.target.value;
+                    })
+                  );
+                }}
+              />
+            )}
+          />
+          {testConnection && (
+            <Box my={2} display="flex" justifyContent="flex-end">
+              <DatasourceTestConnectionButton
+                testConnection={testConnection}
+                disabled={!urlSchema.safeParse(value.directUrl).success}
+              />
+            </Box>
           )}
-        />
+        </>
       ),
     },
   ];
