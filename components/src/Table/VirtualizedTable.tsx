@@ -15,7 +15,7 @@ import { Box, TablePagination, TableRow as MuiTableRow } from '@mui/material';
 import type { ReactTable, Row, RowData } from '@tanstack/react-table';
 import { flexRender } from '@tanstack/react-table';
 import type { ReactElement } from 'react';
-import { useMemo, useRef } from 'react';
+import { forwardRef, useMemo, useRef } from 'react';
 import type { TableComponents, TableVirtuosoHandle, TableVirtuosoProps } from 'react-virtuoso';
 import { TableVirtuoso } from 'react-virtuoso';
 
@@ -52,20 +52,18 @@ type TableContext<TableData extends RowData> = {
 // TableVirtuoso never remounts its internal components due to a changed prop.
 // Props that vary per-render are passed via the `context` prop instead.
 const VirtuosoTableComponents: TableComponents<Row<TableFeatures, RowData>, TableContext<RowData>> = {
-  Scroller: VirtualizedTableContainer,
-  Table: ({ context, ...props }): ReactElement => {
-    return (
-      <InnerTable
-        {...props}
-        width={context.width}
-        density={context.density}
-        onKeyDown={context.onTableKeyDown}
-        onBlur={context.onTableBlur}
-      />
-    );
-  },
-  TableHead,
-  TableFoot,
+  Scroller: forwardRef(({ context: _, ...props }, ref) => <VirtualizedTableContainer {...props} ref={ref} />),
+  Table: ({ context, ...props }): ReactElement => (
+    <InnerTable
+      {...props}
+      width={context.width}
+      density={context.density}
+      onKeyDown={context.onTableKeyDown}
+      onBlur={context.onTableBlur}
+    />
+  ),
+  TableHead: forwardRef(({ context: _, ...props }, ref) => <TableHead {...props} ref={ref} />),
+  TableFoot: forwardRef(({ context: _, ...props }, ref) => <TableFoot {...props} ref={ref} />),
   TableRow: ({ item, context, ...props }): ReactElement | null => {
     if (!item) {
       return null;
@@ -87,7 +85,7 @@ const VirtuosoTableComponents: TableComponents<Row<TableFeatures, RowData>, Tabl
       />
     );
   },
-  TableBody,
+  TableBody: forwardRef(({ context: _, ...props }, ref) => <TableBody {...props} ref={ref} />),
 };
 
 export type VirtualizedTableProps<TableData extends RowData> = Required<
