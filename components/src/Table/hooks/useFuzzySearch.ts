@@ -14,7 +14,6 @@
 import type { FuzzyMatchThreshold } from '@perses-dev/components';
 import { rankings, rankItem } from '@tanstack/match-sorter-utils';
 import type { ExpandedState, FilterFn, TableOptions } from '@tanstack/react-table';
-import { getFilteredRowModel } from '@tanstack/react-table';
 import type { SetStateAction } from 'react';
 import { useCallback, useState } from 'react';
 
@@ -29,10 +28,8 @@ const getFuzzyFilterFunction =
 export interface UseFuzzySearchResult<TableData> {
   globalFilter: string;
   setGlobalFilter: (value: string) => void;
-  fuzzySearchOptions: Pick<
-    TableOptions<TableData>,
-    'filterFns' | 'globalFilterFn' | 'getFilteredRowModel' | 'filterFromLeafRows' | 'onGlobalFilterChange'
-  >;
+  fuzzyFilterFunction: FilterFn<unknown>;
+  fuzzySearchOptions: Pick<TableOptions<TableData>, 'globalFilterFn' | 'filterFromLeafRows' | 'onGlobalFilterChange'>;
 }
 
 /**
@@ -66,10 +63,9 @@ export function useFuzzySearch<TableData>(
   return {
     globalFilter,
     setGlobalFilter: handleGlobalFilterChange,
+    fuzzyFilterFunction: getFuzzyFilterFunction(threshold),
     fuzzySearchOptions: {
-      filterFns: { fuzzy: getFuzzyFilterFunction(threshold) },
       globalFilterFn: isSearchEnabled ? 'fuzzy' : undefined,
-      getFilteredRowModel: isSearchEnabled ? getFilteredRowModel() : undefined,
       filterFromLeafRows: isSearchEnabled,
       onGlobalFilterChange: handleGlobalFilterChange,
     },

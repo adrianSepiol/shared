@@ -12,10 +12,16 @@
 // limitations under the License.
 
 import { Box, TablePagination, TableRow as MuiTableRow } from '@mui/material';
-import type { Column, ColumnSizingInfoState, ColumnSizingState, HeaderGroup, Row } from '@tanstack/react-table';
-import { flexRender } from '@tanstack/react-table';
-import type { ReactElement } from 'react';
-import { useMemo, useRef } from 'react';
+import type {
+  Column,
+  ColumnFiltersState,
+  ColumnSizingInfoState,
+  ColumnSizingState,
+  HeaderGroup,
+  Row,
+} from '@tanstack/react-table';
+import type { ReactElement, SetStateAction } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import type { TableComponents, TableVirtuosoHandle, TableVirtuosoProps } from 'react-virtuoso';
 import { TableVirtuoso } from 'react-virtuoso';
 
@@ -25,9 +31,9 @@ import type { TableCellConfigs, TableProps, TableRowEventOpts } from './model/ta
 import { TableBody } from './TableBody';
 import type { TableCellProps } from './TableCell';
 import { TableCell } from './TableCell';
+import { TableFixedHeader } from './TableFixedHeader';
 import { TableFoot } from './TableFoot';
 import { TableHead } from './TableHead';
-import { TableHeaderCell } from './TableHeaderCell';
 import { TableRow } from './TableRow';
 import type { TableToolbarProps } from './TableToolbar';
 import { TableToolbar } from './TableToolbar';
@@ -50,6 +56,10 @@ export type VirtualizedTableProps<TableData> = Required<
     columnSizingInfo: ColumnSizingInfoState;
     cellConfigs?: TableCellConfigs;
     rowCount: number;
+    columnFilterConfig?: {
+      columnFilters: ColumnFiltersState;
+      onColumnFiltersChange: (filters: SetStateAction<ColumnFiltersState>) => void;
+    };
     toolbarConfig: Pick<
       TableToolbarProps<TableData>,
       | 'isSearchEnabled'
@@ -83,6 +93,7 @@ export function VirtualizedTable<TableData>({
   pagination,
   onPaginationChange,
   rowCount,
+  columnFilterConfig,
   toolbarConfig,
 }: VirtualizedTableProps<TableData>): ReactElement {
   'use no memo'; // TanStack Table row and column getters read mutable state behind stable identities.
@@ -109,13 +120,16 @@ export function VirtualizedTable<TableData>({
     maxColumns: columns.length,
   });
 
-  const getFocusState = (cellPosition: TableCellPosition): TableCellProps['focusState'] => {
-    if (cellPosition.row === keyboardNav.activeCell.row && cellPosition.column === keyboardNav.activeCell.column) {
-      return keyboardNav.isActive ? 'trigger-focus' : 'focus-next';
-    }
+  const getFocusState = useCallback(
+    (cellPosition: TableCellPosition): TableCellProps['focusState'] => {
+      if (cellPosition.row === keyboardNav.activeCell.row && cellPosition.column === keyboardNav.activeCell.column) {
+        return keyboardNav.isActive ? 'trigger-focus' : 'focus-next';
+      }
 
-    return 'none';
-  };
+      return 'none';
+    },
+    [keyboardNav.activeCell.row, keyboardNav.activeCell.column, keyboardNav.isActive],
+  );
 
   const VirtuosoTableComponents: TableComponents<TableData> = useMemo(() => {
     return {
@@ -169,6 +183,29 @@ export function VirtualizedTable<TableData>({
     width,
   ]);
 
+  const fixedHeaderContent = useCallback(
+    () => (
+      <TableFixedHeader
+        headers={headers}
+        density={density}
+        defaultColumnWidth={defaultColumnWidth}
+        defaultColumnHeight={defaultColumnHeight}
+        columnFilterConfig={columnFilterConfig}
+        getFocusState={getFocusState}
+        onCellFocus={keyboardNav.onCellFocus}
+      />
+    ),
+    [
+      headers,
+      density,
+      defaultColumnWidth,
+      defaultColumnHeight,
+      columnFilterConfig,
+      getFocusState,
+      keyboardNav.onCellFocus,
+    ],
+  );
+
   const handleChangePage = (_event: React.MouseEvent<HTMLButtonElement> | null, newPage: number): void => {
     if (!pagination || !onPaginationChange) return;
     onPaginationChange({ ...pagination, pageIndex: newPage });
@@ -206,62 +243,7 @@ export function VirtualizedTable<TableData>({
         // is added.
         // https://github.com/petyosi/react-virtuoso/issues/118#issuecomment-642156138
         rangeChanged={setVisibleRange}
-        fixedHeaderContent={() => {
-          return (
-            <>
-              {headers.map((headerGroup) => {
-                return (
-                  <TableRow key={headerGroup.id} density={density}>
-                    {headerGroup.headers.map((header, i, headers) => {
-                      const column = header.column;
-                      const position: TableCellPosition = {
-                        row: 0,
-                        column: i,
-                      };
-
-                      const isSorted = column.getIsSorted();
-                      const nextSorting = column.getNextSortingOrder();
-
-                      return (
-                        <TableHeaderCell
-                          key={header.id}
-                          onSort={column.getCanSort() ? column.getToggleSortingHandler() : undefined}
-                          sortDirection={typeof isSorted === 'string' ? isSorted : undefined}
-                          nextSortDirection={typeof nextSorting === 'string' ? nextSorting : undefined}
-                          width={
-                            header.column.getCanResize()
-                              ? `calc(var(--header-${header?.id}-size) * 1px)`
-                              : column.getSize() || defaultColumnWidth
-                          }
-                          defaultColumnHeight={defaultColumnHeight}
-                          align={column.columnDef.meta?.align}
-                          variant="head"
-                          density={density}
-                          description={column.columnDef.meta?.headerDescription}
-                          focusState={getFocusState(position)}
-                          onFocusTrigger={() => keyboardNav.onCellFocus(position)}
-                          isFirstColumn={i === 0}
-                          isLastColumn={i === headers.length - 1}
-                          resizeConfig={
-                            header.column.getCanResize()
-                              ? {
-                                  resizeHandler: header.getResizeHandler(),
-                                  resetSizeHandler: header.column.resetSize,
-                                  isResizing: header.column.getIsResizing(),
-                                }
-                              : undefined
-                          }
-                        >
-                          {flexRender(column.columnDef.header, header.getContext())}
-                        </TableHeaderCell>
-                      );
-                    })}
-                  </TableRow>
-                );
-              })}
-            </>
-          );
-        }}
+        fixedHeaderContent={fixedHeaderContent}
         fixedFooterContent={
           pagination
             ? (): ReactElement => (

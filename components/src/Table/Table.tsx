@@ -25,6 +25,9 @@ import type {
 import {
   getCoreRowModel,
   getExpandedRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
@@ -34,7 +37,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { useFuzzySearch } from './hooks/useFuzzySearch';
 import type { TableProps } from './model/table-model';
-import { DEFAULT_COLUMN_WIDTH, persesColumnsToTanstackColumns } from './model/table-model';
+import { columnValueInFilterList, DEFAULT_COLUMN_WIDTH, persesColumnsToTanstackColumns } from './model/table-model';
 import { TableCheckbox } from './TableCheckbox';
 import { VirtualizedTable } from './VirtualizedTable';
 
@@ -78,6 +81,7 @@ export function Table<TableData>({
   tableToolbarConfig,
   columnResizeMode = 'onChange',
   defaultColumnConfig,
+  columnFilterConfig,
   ...otherProps
 }: TableProps<TableData>): ReactElement {
   'use no memo'; // TanStack Table v8 uses a mutable instance that automatic memoization cannot track.
@@ -88,7 +92,7 @@ export function Table<TableData>({
 
   const [expanded, setExpanded] = useState<ExpandedState>({});
 
-  const { globalFilter, setGlobalFilter, fuzzySearchOptions } = useFuzzySearch<TableData>(
+  const { globalFilter, setGlobalFilter, fuzzyFilterFunction, fuzzySearchOptions } = useFuzzySearch<TableData>(
     tableToolbarConfig?.isSearchEnabled,
     tableToolbarConfig?.fuzzyMatchThreshold ?? 'CONTAINS',
     expanded,
@@ -223,19 +227,25 @@ export function Table<TableData>({
     onRowSelectionChange: handleRowSelectionChange,
     onSortingChange: handleSortingChange,
     onColumnVisibilityChange: setColumnVisibility,
+    onColumnFiltersChange: columnFilterConfig?.onColumnFiltersChange,
     getSubRows: getSubRows,
     getExpandedRowModel: hasSubRows ? getExpandedRowModel() : undefined,
     ...fuzzySearchOptions,
+    filterFns: { fuzzy: fuzzyFilterFunction, columnValueInFilterList },
+    getFilteredRowModel: getFilteredRowModel(),
     // For now, defaulting to sort by descending first. We can expose the ability
     // to customize it if/when we have use cases for it.
     sortDescFirst: true,
     columnResizeMode,
     onExpandedChange: setExpanded,
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
     state: {
       rowSelection,
       sorting,
       globalFilter: tableToolbarConfig?.isSearchEnabled ? globalFilter : undefined,
       columnVisibility,
+      columnFilters: columnFilterConfig?.columnFilters,
       ...(pagination ? { pagination } : {}),
       expanded,
     },
@@ -266,6 +276,10 @@ export function Table<TableData>({
       pagination={pagination}
       onPaginationChange={onPaginationChange}
       rowCount={table.getRowCount()}
+      columnFilterConfig={columnFilterConfig && {
+        columnFilters: table.getState().columnFilters,
+        onColumnFiltersChange: columnFilterConfig.onColumnFiltersChange,
+      }}
       toolbarConfig={{
         isSearchEnabled: tableToolbarConfig?.isSearchEnabled,
         globalFilter,

@@ -18,6 +18,7 @@ import type {
   AccessorKeyColumnDef,
   CellContext,
   ColumnDef,
+  ColumnFiltersState,
   CoreOptions,
   FilterFn,
   PaginationState,
@@ -25,7 +26,7 @@ import type {
   RowSelectionState,
   SortingState,
 } from '@tanstack/react-table';
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties, ReactNode, SetStateAction } from 'react';
 
 export const DEFAULT_COLUMN_WIDTH = 150;
 export const DEFAULT_COLUMN_MIN_WIDTH = 60;
@@ -148,6 +149,15 @@ export interface TableProps<TableData> {
    * Callback fired when the table sorting changes.
    */
   onSortingChange?: (sorting: SortingState) => void;
+
+  /**
+   * Configuration for controlled column filter state. Required when any column
+   * sets `enableColumnFilter: true`.
+   */
+  columnFilterConfig?: {
+    columnFilters: ColumnFiltersState;
+    onColumnFiltersChange: (filters: SetStateAction<ColumnFiltersState>) => void;
+  };
 
   /**
    * State of the pagination in the table.
@@ -363,8 +373,15 @@ declare module '@tanstack/react-table' {
   //add fuzzy filter to the filterFns. Allows us to use "fuzzy" as a value for `globalFilterFn` in our table options.
   interface FilterFns {
     fuzzy: FilterFn<unknown>;
+    columnValueInFilterList: FilterFn<unknown>;
   }
 }
+
+// Checks whether the cell's scalar value is present in the filter array.
+// Unlike TanStack's built-in arrIncludes/arrIncludesSome (which expect the cell value to be an array),
+// this works with string/number columns where the filter is a list of allowed values.
+export const columnValueInFilterList: FilterFn<unknown> = (row, columnId, filterValue: unknown[]) =>
+  filterValue.includes(row.getValue(columnId));
 
 // Column link settings
 // The URL could be set to a static link or could be constructed dynamically
@@ -380,7 +397,7 @@ export type DataLink = Omit<Link, 'name'>;
  */
 export interface TableColumnConfig<TableData> extends Pick<
   AccessorKeyColumnDef<TableData>,
-  'accessorKey' | 'cell' | 'sortingFn' | 'id' | 'enableResizing'
+  'accessorKey' | 'cell' | 'sortingFn' | 'id' | 'enableResizing' | 'filterFn' | 'enableColumnFilter'
 > {
   /**
    * Text to display in the header for the column.
@@ -440,7 +457,18 @@ export function persesColumnsToTanstackColumns<TableData>(
   defaultColumnConfig?: DefaultColumnConfig,
 ): Array<ColumnDef<TableData>> {
   return columns.map(
-    ({ width, align, headerDescription, cellDescription, enableSorting, dataLink, enableResizing, ...otherProps }) => {
+    ({
+      width,
+      align,
+      headerDescription,
+      cellDescription,
+      enableSorting,
+      dataLink,
+      enableResizing,
+      enableColumnFilter,
+      filterFn,
+      ...otherProps
+    }) => {
       const isResizingEnabled = enableResizing ?? defaultColumnConfig?.enableResizing ?? false;
       const sizeProps =
         width === 'auto' || width === undefined
@@ -459,6 +487,7 @@ export function persesColumnsToTanstackColumns<TableData>(
         // Default sorting to false, so it is very explicitly set per column.
         enableSorting: !!enableSorting,
         enableResizing: isResizingEnabled,
+        ...(enableColumnFilter ? { enableColumnFilter, filterFn: filterFn ?? 'columnValueInFilterList' } : {}),
 
         // Open-ended store for extra metadata in TanStack Table, so you can bake
         // in your own features.

@@ -12,8 +12,10 @@
 // limitations under the License.
 
 import type { RenderResult } from '@testing-library/react';
-import { render, screen, getAllByRole, within } from '@testing-library/react';
+import { act, render, screen, getAllByRole, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ColumnFiltersState } from '@tanstack/react-table';
+import React, { useState } from 'react';
 import { VirtuosoMockContext } from 'react-virtuoso';
 
 import type { TableCellConfigs, TableColumnConfig, TableProps } from './model/table-model';
@@ -129,6 +131,45 @@ const renderLargeTable = (): void => {
 
   renderTable({ data: LARGE_TABLE_DATA, height });
 };
+
+type FilterTableData = { id: string; status: string; region: string };
+
+const FILTER_DATA: FilterTableData[] = [
+  { id: 'r0', status: 'active', region: 'us-east' },
+  { id: 'r1', status: 'active', region: 'eu-west' },
+  { id: 'r2', status: 'inactive', region: 'us-east' },
+  { id: 'r3', status: 'inactive', region: 'us-west' },
+  { id: 'r4', status: 'active', region: 'ap-south' },
+];
+
+const FILTER_COLUMNS: Array<TableColumnConfig<FilterTableData>> = [
+  { accessorKey: 'status', header: 'Status', enableColumnFilter: true },
+  { accessorKey: 'region', header: 'Region', enableColumnFilter: true },
+];
+
+const FILTER_VIRTUOSO_CONTEXT = { viewportHeight: 600, itemHeight: MOCK_ITEM_HEIGHT };
+const FILTER_ROW_SELECTION = {};
+
+function FilterTableWrapper(): React.ReactElement {
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  return (
+    <VirtuosoMockContext.Provider value={FILTER_VIRTUOSO_CONTEXT}>
+      <Table
+        data={FILTER_DATA}
+        columns={FILTER_COLUMNS}
+        height={600}
+        width={400}
+        rowSelection={FILTER_ROW_SELECTION}
+        onRowSelectionChange={vi.fn()}
+        onRowMouseOver={vi.fn()}
+        onRowMouseOut={vi.fn()}
+        columnFilterConfig={{ columnFilters, onColumnFiltersChange: setColumnFilters }}
+      />
+    </VirtuosoMockContext.Provider>
+  );
+}
+
+const renderFilterTable = (): RenderResult => render(<FilterTableWrapper />);
 
 /**
  * Helper for looking up table cells by the index of the row and column. Useful
@@ -1164,5 +1205,55 @@ describe('table', () => {
     expect(cell4).not.toHaveTextContent('test');
     expect(cell4.firstChild).not.toHaveStyle({ 'background-color': 'rgb(255, 0, 0)' });
     expect(cell4.firstChild).not.toHaveStyle({ color: 'green' });
+  });
+
+  describe('when enableColumnFilter is set on a column', () => {
+    test('renders a filter button in each filterable column header', () => {
+      renderFilterTable();
+      const columnHeaders = screen.getAllByRole('columnheader');
+      expect(columnHeaders).toHaveLength(FILTER_COLUMNS.length);
+      for (const header of columnHeaders) {
+        expect(within(header).getByRole('button', { name: /filter column/i })).toBeInTheDocument();
+      }
+    });
+
+    test('columns without enableColumnFilter do not render a filter button', () => {
+      renderTable();
+      const filterButtons = screen.queryAllByRole('button', { name: /filter column/i });
+      expect(filterButtons).toHaveLength(0);
+    });
+
+    test('clicking the filter button opens a popover listing unique column values', async () => {
+      renderFilterTable();
+      const [statusHeader] = screen.getAllByRole('columnheader');
+      if (!statusHeader) throw new Error('Missing status header');
+
+      await act(async () => {
+        userEvent.click(within(statusHeader).getByRole('button', { name: /filter column/i }));
+      });
+
+      expect(screen.getByRole('checkbox', { name: 'active' })).toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: 'inactive' })).toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: 'Select all' })).toBeInTheDocument();
+    });
+
+    test('selecting a value checks its checkbox and marks the filter button as active', async () => {
+      renderFilterTable();
+      const [statusHeader] = screen.getAllByRole('columnheader');
+      if (!statusHeader) throw new Error('Missing status header');
+
+      await act(async () => {
+        userEvent.click(within(statusHeader).getByRole('button', { name: /filter column/i }));
+      });
+
+      const activeCheckbox = screen.getByRole('checkbox', { name: 'active' });
+      expect(activeCheckbox).not.toBeChecked();
+
+      await act(async () => {
+        userEvent.click(activeCheckbox);
+      });
+
+      expect(activeCheckbox).toBeChecked();
+    });
   });
 });

@@ -12,9 +12,11 @@
 // limitations under the License.
 
 import { createTheme } from '@mui/material';
+import { createTable, getCoreRowModel, getFilteredRowModel } from '@tanstack/react-table';
+import type { Table } from '@tanstack/react-table';
 
 import type { TableColumnConfig } from './table-model';
-import { getTableCellLayout, persesColumnsToTanstackColumns } from './table-model';
+import { columnValueInFilterList, getTableCellLayout, persesColumnsToTanstackColumns } from './table-model';
 
 const mockMuiTheme = createTheme({});
 
@@ -251,6 +253,53 @@ describe('persesColumnToTanstackColumn', () => {
     });
   });
 
+  describe('enableColumnFilter', () => {
+    test('sets enableColumnFilter and defaults filterFn to columnValueInFilterList when enableColumnFilter is true', () => {
+      const persesColumns: Array<TableColumnConfig<MockTableData>> = [
+        { accessorKey: 'label', header: 'Name', enableColumnFilter: true },
+      ];
+      const tanstackColumns = persesColumnsToTanstackColumns(persesColumns);
+      expect(tanstackColumns[0]).toEqual(
+        expect.objectContaining({
+          enableColumnFilter: true,
+          filterFn: 'columnValueInFilterList',
+        }),
+      );
+    });
+
+    test('uses a custom filterFn when provided alongside enableColumnFilter', () => {
+      const customFilter = vi.fn();
+      const persesColumns: Array<TableColumnConfig<MockTableData>> = [
+        { accessorKey: 'label', header: 'Name', enableColumnFilter: true, filterFn: customFilter },
+      ];
+      const tanstackColumns = persesColumnsToTanstackColumns(persesColumns);
+      expect(tanstackColumns[0]).toEqual(
+        expect.objectContaining({
+          enableColumnFilter: true,
+          filterFn: customFilter,
+        }),
+      );
+    });
+
+    test('does not set enableColumnFilter or filterFn when enableColumnFilter is not set', () => {
+      const persesColumns: Array<TableColumnConfig<MockTableData>> = [
+        { accessorKey: 'label', header: 'Name' },
+      ];
+      const tanstackColumns = persesColumnsToTanstackColumns(persesColumns);
+      expect(tanstackColumns[0]).not.toHaveProperty('enableColumnFilter');
+      expect(tanstackColumns[0]).not.toHaveProperty('filterFn');
+    });
+
+    test('does not set enableColumnFilter or filterFn when enableColumnFilter is false', () => {
+      const persesColumns: Array<TableColumnConfig<MockTableData>> = [
+        { accessorKey: 'label', header: 'Name', enableColumnFilter: false },
+      ];
+      const tanstackColumns = persesColumnsToTanstackColumns(persesColumns);
+      expect(tanstackColumns[0]).not.toHaveProperty('enableColumnFilter');
+      expect(tanstackColumns[0]).not.toHaveProperty('filterFn');
+    });
+  });
+
   test('transforms perses columns to tanstack columns', () => {
     const persesColumns: Array<TableColumnConfig<MockTableData>> = [
       {
@@ -271,5 +320,64 @@ describe('persesColumnToTanstackColumn', () => {
       },
     ];
     expect(persesColumnsToTanstackColumns(persesColumns)).toMatchSnapshot();
+  });
+});
+
+describe('column filter behavior', () => {
+  type FilterData = { status: string; count: number };
+
+  const filterData: FilterData[] = [
+    { status: 'active', count: 3 },
+    { status: 'active', count: 1 },
+    { status: 'inactive', count: 2 },
+    { status: 'pending', count: 0 },
+  ];
+
+  const filterColumns: Array<TableColumnConfig<FilterData>> = [
+    { accessorKey: 'status', header: 'Status', enableColumnFilter: true },
+    { accessorKey: 'count', header: 'Count', enableColumnFilter: true },
+  ];
+
+  function makeTable(columnFilters: Array<{ id: string; value: unknown[] }>): Table<FilterData> {
+    const tanstackColumns = persesColumnsToTanstackColumns(filterColumns);
+    return createTable({
+      data: filterData,
+      columns: tanstackColumns,
+      filterFns: { columnValueInFilterList } as never,
+      getCoreRowModel: getCoreRowModel(),
+      getFilteredRowModel: getFilteredRowModel(),
+      state: { columnFilters },
+      onStateChange: () => {},
+      renderFallbackValue: '',
+    });
+  }
+
+  test('filters rows to only matching string values', () => {
+    const table = makeTable([{ id: 'status', value: ['active'] }]);
+    const rows = table.getFilteredRowModel().rows;
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.getValue('status'))).toEqual(['active', 'active']);
+  });
+
+  test('filters rows to multiple string values', () => {
+    const table = makeTable([{ id: 'status', value: ['active', 'pending'] }]);
+    const rows = table.getFilteredRowModel().rows;
+    expect(rows).toHaveLength(3);
+  });
+
+  test('filters rows to numeric values', () => {
+    const table = makeTable([{ id: 'count', value: [1, 2] }]);
+    const rows = table.getFilteredRowModel().rows;
+    expect(rows).toHaveLength(2);
+  });
+
+  test('returns no rows when filter matches nothing', () => {
+    const table = makeTable([{ id: 'status', value: ['unknown'] }]);
+    expect(table.getFilteredRowModel().rows).toHaveLength(0);
+  });
+
+  test('returns all rows when no filter is active', () => {
+    const table = makeTable([]);
+    expect(table.getFilteredRowModel().rows).toHaveLength(4);
   });
 });
