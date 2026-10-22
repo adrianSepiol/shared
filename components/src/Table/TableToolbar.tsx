@@ -13,6 +13,7 @@
 
 import { Checkbox, IconButton, InputAdornment, ListItemText, Menu, MenuItem, Stack, Tooltip } from '@mui/material';
 import type { Column, RowData } from '@tanstack/react-table';
+import { Subscribe } from '@tanstack/react-table';
 import Close from 'mdi-material-ui/Close';
 import Magnify from 'mdi-material-ui/Magnify';
 import UnfoldLess from 'mdi-material-ui/UnfoldLessHorizontal';
@@ -87,8 +88,6 @@ export function TableToolbar<TableData extends RowData>({
   isAllExpanded,
   onExpandAllChange,
 }: TableToolbarProps<TableData>): ReactElement | null {
-  'use no memo'; // TanStack Table columns retain their identity when visibility changes.
-
   const [colMenuAnchor, setColMenuAnchor] = useState<null | HTMLElement>(null);
   const colMenuOpen = Boolean(colMenuAnchor);
   const [searchResetKey, setSearchResetKey] = useState(0);
@@ -177,13 +176,18 @@ export function TableToolbar<TableData extends RowData>({
                   onClick={column.getCanHide() ? column.getToggleVisibilityHandler() : undefined}
                   dense
                 >
-                  <Checkbox
-                    checked={column.getIsVisible()}
-                    disabled={!column.getCanHide()}
-                    size="small"
-                    disableRipple
-                    sx={{ p: 0, mr: 1 }}
-                  />
+                  {/* Columns keep their identity when visibility changes, so subscribe to it explicitly. */}
+                  <Subscribe source={column.table.atoms.columnVisibility}>
+                    {() => (
+                      <Checkbox
+                        checked={column.getIsVisible()}
+                        disabled={!column.getCanHide()}
+                        size="small"
+                        disableRipple
+                        sx={{ p: 0, mr: 1 }}
+                      />
+                    )}
+                  </Subscribe>
                   <ListItemText primary={label} />
                 </MenuItem>
               );

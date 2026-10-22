@@ -76,8 +76,6 @@ export function Table<TableData extends RowData>({
   defaultColumnConfig,
   ...otherProps
 }: TableProps<TableData>): ReactElement {
-  'use no memo'; // TanStack Table v8 uses a mutable instance that automatic memoization cannot track.
-
   const theme = useTheme();
 
   const hasSubRows = !!getSubRows;
@@ -236,13 +234,14 @@ export function Table<TableData extends RowData>({
     },
   });
 
+  // Use the row's stable core table rather than `table`, whose identity changes
+  // with every state update and would otherwise remount all virtualized rows.
   const handleRowClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement, MouseEvent>, rowId: string) => {
-      const row = table.getRow(rowId);
+    (e: React.MouseEvent<HTMLDivElement, MouseEvent>, row: Row<TableFeatures, TableData>) => {
       const isModifiedClick = e.metaKey || e.shiftKey;
-      handleRowSelectionEvent(table, row, isModifiedClick);
+      handleRowSelectionEvent(row.table, row, isModifiedClick);
     },
-    [handleRowSelectionEvent, table],
+    [handleRowSelectionEvent],
   );
 
   return (
@@ -252,15 +251,10 @@ export function Table<TableData extends RowData>({
       defaultColumnWidth={defaultColumnWidth}
       defaultColumnHeight={defaultColumnHeight}
       onRowClick={handleRowClick}
-      rows={table.getRowModel().rows}
-      columns={table.getVisibleFlatColumns()}
-      columnSizing={table.state.columnSizing}
-      columnResizing={table.state.columnResizing}
-      headers={table.getHeaderGroups()}
+      table={table}
       cellConfigs={cellConfigs}
       pagination={pagination}
       onPaginationChange={onPaginationChange}
-      rowCount={table.getRowCount()}
       toolbarConfig={{
         isSearchEnabled: tableToolbarConfig?.isSearchEnabled,
         globalFilter,
